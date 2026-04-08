@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UERH - Consulta de Plantillas 2026</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --rojo: #c61a2e; --negro: #1a1a1a; --azul: #0056b3; }
+        body { font-family: 'Roboto', sans-serif; margin: 0; background: #fdfdfd; padding-bottom: 50px; }
+        
+        .nav-uerh-global { background: #000; display: flex; overflow-x: auto; position: sticky; top: 0; z-index: 10000; border-bottom: 3px solid var(--rojo); padding: 0; scrollbar-width: none; }
+        .nav-uerh-global a { color: #888; text-decoration: none; padding: 15px 18px; font-weight: 900; font-size: 0.7rem; text-transform: uppercase; white-space: nowrap; border-right: 1px solid #1a1a1a; }
+        .nav-uerh-global a.active { color: #fff; background: var(--rojo); }
+
+        /* Banner compacto y navegación unificada */
+        .header { background: var(--negro); color: var(--rojo); padding: 15px; display: flex; align-items: center; justify-content: space-between; font-size: 1rem; font-weight: 900; border-bottom: 3px solid var(--rojo); text-transform: uppercase; }
+        
+        .perfil-banner { background: var(--negro); color: white; padding: 10px 15px; border-bottom: 5px solid var(--rojo); display: flex; align-items: center; justify-content: space-between; }
+        .banner-left { display: flex; align-items: center; gap: 12px; }
+        
+        .btn-atras-mini { color: var(--rojo); font-weight: 900; cursor: pointer; font-size: 0.7rem; padding-right: 12px; border-right: 1px solid #333; text-transform: uppercase; }
+        
+        .foto-g { width: 45px; height: 45px; border-radius: 8px; background: white; object-fit: contain; border: 1px solid rgba(255,255,255,0.2); }
+        
+        .info-header h2 { margin: 0; font-size: 0.95rem; text-transform: uppercase; line-height: 1.1; }
+        .info-header p { margin: 0; font-size: 0.6rem; color: #888; font-weight: 700; }
+
+        .stats-mini-container { display: flex; gap: 6px; text-align: center; }
+        .stat-box-mini { background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; min-width: 35px; }
+        .stat-label-mini { font-size: 0.5rem; color: #aaa; display: block; }
+        .stat-value-mini { font-weight: 900; font-size: 0.8rem; }
+
+        .container { width: 100%; max-width: 600px; margin: auto; }
+        .cat-header { background: #f4f4f4; padding: 12px 20px; font-size: 0.85rem; font-weight: 900; color: #444; text-transform: uppercase; border-left: 6px solid var(--rojo); margin-top: 10px; }
+        
+        .card-item { padding: 18px 20px; display: flex; align-items: center; border-bottom: 1px solid #f0f0f0; background: white; cursor: pointer; }
+        .avatar { width: 60px; height: 60px; border-radius: 50%; margin-right: 15px; border: 1px solid #eee; overflow: hidden; flex-shrink: 0; }
+        .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .info h3 { margin: 0; font-size: 1.1rem; color: #222; font-weight: 700; }
+        .info p { margin: 2px 0 0 0; color: #888; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+        .meta { margin-left: auto; font-weight: 900; color: var(--rojo); font-size: 1.1rem; }
+
+        /* MODAL DE SOLO LECTURA (TIPO NODAL) */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-content { background: white; width: 92%; border-radius: 30px; overflow: hidden; max-width: 380px; }
+        
+        .view-row { display: flex; justify-content: space-between; align-items: center; padding: 20px 25px; border-bottom: 1px solid #f0f0f0; }
+        .view-label { display: flex; flex-direction: column; }
+        .lab-main { font-weight: 900; color: #333; text-transform: uppercase; font-size: 0.8rem; }
+        .lab-sub { font-size: 0.65rem; color: #bbb; margin-top: 2px; font-weight: 700; }
+
+        .badge-total { background: var(--negro); color: white; padding: 10px 15px; border-radius: 12px; font-weight: 900; font-size: 1.2rem; min-width: 40px; text-align: center; }
+        .modo-g .badge-total { color: #00ccff; }
+
+        .btn-close { width: 100%; padding: 22px; border: none; background: #f4f4f4; color: #666; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+        .seccion { display: none; }
+        .active { display: block; }
+    </style>
+</head>
+<body>
+
+<nav class="nav-uerh-global">
+    <a href="UERH.html">INICIO</a>
+    <a href="Calendario-Posiciones.html">Calendario</a>
+    <a href="Equipos.html" class="active">Equipos</a>
+    <a href="Estadisticasnuevo.html">Estadísticas</a>
+    <a href="Porteros.html">Ranking Goleros</a>
+</nav>
+
+<div id="v-equipos" class="seccion active">
+    <div class="header"><span>UERH 2026</span><div>EQUIPOS</div><div onclick="location.reload()"></div></div>
+    <div class="container" id="lista-equipos"></div>
+</div>
+
+<div id="v-jugadores" class="seccion">
+    <div id="banner-equipo"></div>
+    <div class="container" id="lista-jugadores"></div>
+</div>
+
+
+
+<div id="modalStats" class="modal">
+    <div class="modal-content" id="modal-container">
+        <div id="modal-header-info" style="background:var(--negro); color:white; padding:40px 20px; text-align:center;"></div>
+        <div id="visor-datos"></div>
+        <button class="btn-close" onclick="cerrarModal()">CERRAR CONSULTA</button>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = { databaseURL: "https://uerh-t2026-default-rtdb.firebaseio.com" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let DB_GLOBAL = {};
+    let equipoSeleccionado = null;
+    const LOGOS = { "usb": "https://i.ibb.co/DDPNgpQs/USB.jpg", "lobos": "https://i.ibb.co/twtStywG/Lobos.jpg", "tejones": "https://i.ibb.co/Z12wf76K/Tejones.jpg", "thunderfast": "https://i.ibb.co/7x9mJQyq/Tunther.jpg" };
+
+    function limpiar(t) {
+        if (!t) return "";
+        return String(t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/^[_#]\d+\s*/, "").replace(/\(.*\)/g, "").replace(/[^a-z0-9]/g, "").trim();
+    }
+
+    db.ref().on('value', snap => {
+        DB_GLOBAL = snap.val() || {};
+        if (equipoSeleccionado) mostrarPlantilla(equipoSeleccionado);
+        else renderEquipos();
+    });
+
+    function renderEquipos() {
+        const cont = document.getElementById('lista-equipos');
+        let mapa = {};
+        Object.values(DB_GLOBAL.config?.jugadores || {}).forEach(j => { 
+            if(j.equipo) mapa[j.equipo.toLowerCase()] = { nombre: j.equipo, logo: LOGOS[j.equipo.toLowerCase()] || "" }; 
+        });
+        cont.innerHTML = Object.values(mapa).sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(e => `
+            <div class="card-item" onclick="mostrarPlantilla('${e.nombre}')">
+                <div class="avatar"><img src="${e.logo}"></div>
+                <div class="info"><h3>${e.nombre}</h3><p>Temporada 2026</p></div>
+                <div class="meta" style="color:#ccc;">❯</div>
+            </div>`).join('');
+    }
+
+   
+
+function mostrarPlantilla(nombre) {
+    equipoSeleccionado = nombre;
+    document.getElementById('v-equipos').classList.remove('active');
+    document.getElementById('v-jugadores').classList.add('active');
+    
+    const keyEq = nombre.toLowerCase();
+    const integrantes = Object.values(DB_GLOBAL.config?.jugadores || {}).filter(j => j.equipo?.toLowerCase() === keyEq);
+    
+    // --- NUEVO: CÁLCULO DE ESTADÍSTICAS DEL EQUIPO ---
+    let totalGolesAFavor = 0;
+    let totalGolesEnContra = 0;
+    let totalTiros = 0;
+
+    if (DB_GLOBAL.config?.resultados) {
+        Object.values(DB_GLOBAL.config.resultados).forEach(p => {
+            const esLocal = p.equipos?.local?.nombre?.toLowerCase() === keyEq;
+            const esVisita = p.equipos?.visitante?.nombre?.toLowerCase() === keyEq;
+
+            if (esLocal) {
+                totalGolesAFavor += parseInt(p.equipos.local.goles || 0);
+                totalGolesEnContra += parseInt(p.equipos.visitante.goles || 0);
+                totalTiros += parseInt(p.equipos.local.tiros || 0);
+            } else if (esVisita) {
+                totalGolesAFavor += parseInt(p.equipos.visitante.goles || 0);
+                totalGolesEnContra += parseInt(p.equipos.local.goles || 0);
+                totalTiros += parseInt(p.equipos.visitante.tiros || 0);
+            }
+        });
+    }
+
+    
+// --- ACTUALIZACIÓN DEL BANNER COMPACTO UNIFICADO ---
+    document.getElementById('banner-equipo').innerHTML = `
+        <div class="perfil-banner">
+            <div class="banner-left">
+                <div class="btn-atras-mini" onclick="atras()">← VOLVER</div>
+                <img src="${LOGOS[keyEq] || ''}" class="foto-g">
+                <div class="info-header">
+                    <h2>${nombre}</h2>
+                    <p>PLANTILLA OFICIAL</p>
+                </div>
+            </div>
+            
+            <div class="stats-mini-container">
+                <div class="stat-box-mini">
+                    <span class="stat-label-mini">GF</span>
+                    <span class="stat-value-mini">${totalGolesAFavor}</span>
+                </div>
+                <div class="stat-box-mini">
+                    <span class="stat-label-mini">GC</span>
+                    <span class="stat-value-mini" style="color:var(--rojo)">${totalGolesEnContra}</span>
+                </div>
+                <div class="stat-box-mini">
+                    <span class="stat-label-mini">TIROS</span>
+                    <span class="stat-value-mini" style="color:#00ccff">${totalTiros}</span>
+                </div>
+            </div>
+        </div>`;
+
+
+
+
+
+
+
+
+
+    // --- LÓGICA DE PRIORIDAD Y RENDER DE JUGADORES (Se mantiene igual) ---
+    integrantes.forEach(j => {
+        const infoU = j.info.toUpperCase();
+        const dorsal = (j.info.match(/#(\d+)/) || [0, 999])[1];
+        if (infoU.includes("(C)")) j.prioridad = 1;
+        else if (infoU.includes("(A)")) j.prioridad = 2;
+        else if (/G[1-3]/.test(infoU)) {
+            const nivelG = (infoU.match(/G(\d)/) || [0, 1])[1];
+            j.prioridad = 4 + parseInt(nivelG);
+        } else j.prioridad = 3;
+        j.dorsalNum = parseInt(dorsal);
+    });
+
+    integrantes.sort((a, b) => {
+        if (a.prioridad !== b.prioridad) return a.prioridad - b.prioridad;
+        return a.dorsalNum - b.dorsalNum;
+    });
+
+    const esMujer = (nom) => {
+        const n = nom.toLowerCase();
+        return n.includes("valeria") || n.includes("agustina") || n.includes("kiara") || 
+               n.includes("natalia") || n.includes("maria") || n.includes("santina") || 
+               n.includes("victoria") || n.includes("florencia") || n.includes("lucia") ||
+               n.includes("fabiana") || n.includes("claudia") || n.includes("fiorella");
+    };
+
+    let htmlFinal = "";
+    let ultimaPrioridad = null;
+    const titulos = { 1: "CAPITANES", 2: "ASISTENTES", 3: "JUGADORES", 5: "PORTEROS", 6: "PORTEROS", 7: "PORTEROS" };
+
+    integrantes.forEach(j => {
+        if (ultimaPrioridad !== j.prioridad) {
+            if (titulos[j.prioridad]) htmlFinal += `<div class="cat-header">${titulos[j.prioridad]}</div>`;
+            ultimaPrioridad = j.prioridad;
+        }
+
+        const nomLimpio = j.info.replace(/#\d+/, "").replace(/\(.*\)/g, "").trim();
+        const idB = limpiar(j.info); 
+        const reg = Object.values(DB_GLOBAL.inscripciones || {}).find(ins => limpiar(ins.jugadorName) === idB) || {};
+        const foto = reg.fotoCarnet || "https://i.ibb.co/LzN868/default-avatar.png";
+        const infoU = j.info.toUpperCase();
+        const mujer = esMujer(nomLimpio);
+
+        let label = "JUGADOR";
+        if (infoU.includes("G1")) label = mujer ? "GOLERA G1" : "GOLERO G1";
+        else if (infoU.includes("G2")) label = mujer ? "GOLERA G2" : "GOLERO G2";
+        else if (infoU.includes("G3")) label = mujer ? "GOLERA G3" : "GOLERO G3";
+        else if (infoU.includes("(C)")) label = mujer ? "CAPITANA" : "CAPITÁN";
+        else if (infoU.includes("(A)")) label = "ASISTENTE";
+        else if (mujer) label = "JUGADORA";
+
+        let w1=0, w2=0, w3=0;
+        const esG = /G[1-3]/.test(infoU);
+        if (DB_GLOBAL.config?.resultados) {
+            Object.values(DB_GLOBAL.config.resultados).forEach(p => {
+                if (!p.individuales) return;
+                ['local', 'visitante'].forEach(lado => {
+                    const s = p.individuales[lado] || {};
+                    if (esG && s.porteria) {
+                        Object.entries(s.porteria).forEach(([n, d]) => {
+                            if (limpiar(n) === idB) { w1 += parseInt(d.atajadas||0); w2 += parseInt(d.recibidos||0); w3 += parseInt(d.tiempo||0); }
+                        });
+                    } else if (!esG) {
+                        if (s.goles) Object.entries(s.goles).forEach(([n, v]) => { if (limpiar(n) === idB) w1 += parseInt(v||0); });
+                        if (s.asistencias) Object.entries(s.asistencias).forEach(([n, v]) => { if (limpiar(n) === idB) w2 += parseInt(v||0); });
+                        if (s.penalizaciones) Object.entries(s.penalizaciones).forEach(([n, f]) => {
+                            if (limpiar(n) === idB && typeof f === 'object') Object.values(f).forEach(m => w3 += parseInt(m.minutos || 0));
+                        });
+                    }
+                });
+            });
+        }
+        const man = DB_GLOBAL.estadisticas_manuales?.[idB] || {v1:0, v2:0, v3:0};
+
+        htmlFinal += `
+            <div class="card-item" onclick="abrirFicha('${nomLimpio}', '${foto}', ${esG}, ${w1 + parseInt(man.v1||0)}, ${w2 + parseInt(man.v2||0)}, ${w3 + parseInt(man.v3||0)}, ${w1}, ${man.v1}, ${w2}, ${man.v2}, ${w3}, ${man.v3})">
+                <div class="avatar"><img src="${foto}"></div>
+                <div class="info"><h3>${nomLimpio}</h3><p>${label}</p></div>
+                <div class="meta">#${j.dorsalNum}</div>
+            </div>`;
+    });
+
+    document.getElementById('lista-jugadores').innerHTML = htmlFinal;
+}
+
+
+
+
+
+
+
+
+
+    function abrirFicha(nombre, foto, esG, total1, total2, total3, web1, man1, web2, man2, web3, man3) {
+    // Si es un golero, salimos de la función sin mostrar el modal
+    if (esG) return; 
+
+    // El resto del código solo se ejecutará para jugadores normales
+    const labels = ["Goles", "Asistencias", "Min. Sanción"];
+    document.getElementById('modal-container').className = "modal-content";
+    
+    document.getElementById('modal-header-info').innerHTML = `
+        <img src="${foto}" style="width:100px;height:100px;border-radius:50%;border:3px solid white;margin-bottom:10px;object-fit:cover;">
+        <h2 style="margin:0;">${nombre}</h2>
+        <div style="font-size:0.7rem; color:#888;">ESTADÍSTICAS ACUMULADAS 2026</div>`;
+    
+    const row = (tit, val, sub) => `
+        <div class="view-row">
+            <div class="view-label">
+                <span class="lab-main">${tit}</span>
+                <span class="lab-sub">${sub}</span>
+            </div>
+            <div class="badge-total">${val}</div>
+        </div>`;
+
+    const detalle1 = `Web: ${web1} + Manual: ${man1}`;
+    
+    document.getElementById('visor-datos').innerHTML = 
+        row(labels[0], total1, detalle1) + 
+        row(labels[1], total2, "TOTAL ACUMULADO") + 
+        row(labels[2], total3, "TOTAL ACUMULADO");
+        
+    document.getElementById('modalStats').style.display = 'flex';
+}
+
+    function cerrarModal() { document.getElementById('modalStats').style.display = 'none'; }
+    function atras() { equipoSeleccionado = null; document.getElementById('v-jugadores').classList.remove('active'); document.getElementById('v-equipos').classList.add('active'); }
+</script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estadísticas Porteros UERH - Hockey</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --rojo: #c61a2e; --negro: #1a1a1a; --gris: #f4f4f4; --azul: #1368ce; --dorado: #b8860b; --verde: #26890c; }
+        body { font-family: 'Roboto', sans-serif; background: var(--gris); margin: 0; padding-bottom: 50px; }
+        .header { background: var(--negro); color: white; padding: 20px; text-align: center; border-bottom: 4px solid var(--rojo); position: sticky; top: 0; z-index: 100; }
+        .header h1 { margin: 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
+        .container { max-width: 800px; margin: auto; padding: 10px; }
+        
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 25px; overflow: hidden; border: 1px solid #eee; }
+        .card-t { background: #fafafa; padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #eee; color: var(--rojo); text-transform: uppercase; font-size: 0.85rem; }
+        
+        .row { display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f9f9f9; }
+        .row.extra { display: none; }
+        .row.show { display: flex; }
+        
+        .rank { width: 30px; font-weight: bold; color: #bbb; font-size: 0.85rem; }
+        .img-box { position: relative; width: 50px; height: 50px; margin-right: 15px; flex-shrink: 0; }
+        .p-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #eee; background: #fff; }
+        
+        .info { flex: 1; min-width: 0; padding-right: 10px; }
+        .n { display: block; font-weight: bold; font-size: 0.9rem; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .e { display: block; font-size: 0.65rem; color: #888; text-transform: uppercase; margin-top: 2px; }
+        
+        /* Grilla para la tabla principal con todos los atributos */
+        .stats-grid { display: flex; gap: 4px; align-items: center; }
+        .v-box { text-align: center; min-width: 38px; padding: 4px; border-radius: 6px; background: #f8f8f8; border: 1px solid #eee; }
+        .v-label { display: block; font-size: 0.5rem; color: #999; text-transform: uppercase; font-weight: bold; margin-bottom: 1px; }
+        .v-num { display: block; font-weight: 900; font-size: 0.8rem; color: var(--negro); }
+        .v-box.destacado { background: #fff8e1; color: var(--dorado); border-color: #ffe082; min-width: 50px; }
+        .v-box.destacado .v-num { color: var(--dorado); }
+
+        /* Estilo para las tablas individuales posteriores */
+        .val-destacado { font-weight: 900; font-size: 1.1rem; min-width: 50px; text-align: right; }
+        .color-ata { color: var(--verde); }
+        .color-gr { color: var(--rojo); }
+        .color-min { color: var(--azul); }
+
+        .btn-toggle { width: 100%; padding: 14px; background: #fff; border: none; color: #666; font-size: 0.8rem; font-weight: bold; cursor: pointer; border-top: 1px solid #eee; text-transform: uppercase; }
+        #loading { text-align: center; padding: 50px; color: #666; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+
+<style>
+    .nav-uerh-global {
+        background: #000;
+        display: flex;
+        overflow-x: auto;
+        position: sticky;
+        top: 0;
+        z-index: 10000;
+        border-bottom: 3px solid #c61a2e;
+        padding: 0;
+        scrollbar-width: none; /* Oculta scroll en Firefox */
+    }
+    .nav-uerh-global::-webkit-scrollbar { display: none; } /* Oculta scroll en Chrome/Safari */
+
+    .nav-uerh-global a {
+        color: #888;
+        text-decoration: none;
+        padding: 15px 18px;
+        font-weight: 900;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        white-space: nowrap;
+        transition: 0.3s;
+        border-right: 1px solid #1a1a1a;
+        display: flex;
+        align-items: center;
+    }
+    .nav-uerh-global a.active {
+        color: #fff;
+        background: #c61a2e;
+    }
+    .nav-uerh-global a:hover:not(.active) {
+        color: #fff;
+        background: #111;
+    }
+    /* Estilo especial para el botón de Inicio/Regresar */
+    .btn-nav-home {
+        background: #1a1a1a;
+        color: #c61a2e !important;
+        border-right: 2px solid #c61a2e !important;
+    }
+</style>
+
+<nav class="nav-uerh-global">
+    <a href="UERH.html" class="btn-nav-home">INICIO</a>
+    <a href="Calendario-Posiciones.html" id="m-cal">Calendario</a>
+    <a href="Equipos.html" id="m-equ">Equipos</a>
+    <a href="Estadisticasnuevo.html" id="m-est">Estadísticas</a>
+    <a href="Porteros.html" id="m-por">Ranking Goleros</a>
+</nav>
+
+<script>
+    // Detecta en qué página estamos para iluminar el botón correcto
+    const path = window.location.pathname.split("/").pop();
+    if (path.includes('Calendario')) document.getElementById('m-cal').classList.add('active');
+    if (path.includes('Equipos')) document.getElementById('m-equ').classList.add('active');
+    if (path.includes('Estadisticas')) document.getElementById('m-est').classList.add('active');
+    if (path.includes('Porteros')) document.getElementById('m-por').classList.add('active');
+</script>
+    <div class="header"><h1>Estadísticas Porteros UERH</h1></div>
+    
+    <div id="main" class="container">
+        <div id="loading">Cargando estadísticas de la liga...</div>
+    </div>
+
+    <script>
+        const firebaseConfig = { databaseURL: "https://uerh-t2026-default-rtdb.firebaseio.com" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function superLimpiar(t) {
+            if (!t) return "";
+            return String(t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\(g[1-3]\)/g, "").replace(/[^a-z]/g, "").trim();
+        }
+
+        function toggleLista(btn, idCard, total) {
+            const filasExtras = document.querySelectorAll(`[data-card="${idCard}"].extra`);
+            const estaExpandido = btn.getAttribute('data-expandido') === 'true';
+            if (estaExpandido) {
+                filasExtras.forEach(f => f.classList.remove('show'));
+                btn.innerHTML = `Ver todos (${total}) ▾`;
+                btn.setAttribute('data-expandido', 'false');
+            } else {
+                filasExtras.forEach(f => f.classList.add('show'));
+                btn.innerHTML = `Ver menos ▴`;
+                btn.setAttribute('data-expandido', 'true');
+            }
+        }
+
+        db.ref().on('value', snap => {
+            const DATA = snap.val() || {};
+            const main = document.getElementById('main');
+            const inscripciones = DATA.inscripciones || {}; 
+            const resultados = DATA.config?.resultados || {};
+            
+            let statsP = {};
+
+            Object.values(resultados).forEach(p => {
+                ['local', 'visitante'].forEach(lado => {
+                    if (p.porteros && p.porteros[lado]) {
+                        Object.values(p.porteros[lado]).forEach(port => {
+                            if (!port.nombre) return;
+                            const id = superLimpiar(port.nombre);
+                            if (!statsP[id]) {
+                                statsP[id] = { n: port.nombre, equipos: new Set(), paradas: 0, minutos: 0, goles: 0 };
+                            }
+                            statsP[id].paradas += parseInt(port.paradas || 0);
+                            statsP[id].minutos += parseInt(port.minutos || 0);
+                            statsP[id].goles += parseInt(port.goles || 0);
+                            if (p.equipos?.[lado]?.nombre) statsP[id].equipos.add(p.equipos[lado].nombre);
+                        });
+                    }
+                });
+            });
+
+            const calcularPuntosVencido = (j) => j.minutos / (j.goles + 1);
+
+            // 1. RENDER TABLA GOLERO MENOS VENCIDO (CON TODOS LOS ATRIBUTOS)
+            const renderPrincipal = (lista, idCard) => {
+                let h = `<div class="card"><div class="card-t">🥇 Golero Menos Vencido</div>`;
+                lista.forEach((j, i) => {
+                    const idBusqueda = superLimpiar(j.n);
+                    let fotoUrl = 'https://i.ibb.co/LzN868X/default-avatar.png';
+                    for (let userId in inscripciones) {
+                        const d = inscripciones[userId];
+                        if (superLimpiar(d.jugadorName || d.nombre) === idBusqueda && d.fotoCarnet) {
+                            fotoUrl = d.fotoCarnet; break;
+                        }
+                    }
+                    const esExtra = i >= 5;
+                    h += `
+                    <div class="row ${esExtra ? 'extra' : ''}" data-card="${idCard}">
+                        <div class="rank">${i + 1}</div>
+                        <div class="img-box"><img src="${fotoUrl}" class="p-img"></div>
+                        <div class="info">
+                            <span class="n">${j.n}</span>
+                            <span class="e">${Array.from(j.equipos).join(" / ")}</span>
+                        </div>
+                        <div class="stats-grid">
+                            <div class="v-box"><span class="v-label">MIN</span><span class="v-num">${j.minutos}'</span></div>
+                            <div class="v-box"><span class="v-label">GR</span><span class="v-num">${j.goles}</span></div>
+                            <div class="v-box"><span class="v-label">SVS</span><span class="v-num">${j.paradas}</span></div>
+                            <div class="v-box destacado">
+                                <span class="v-label">PTS</span>
+                                <span class="v-num">${calcularPuntosVencido(j).toFixed(1)}</span>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                if (lista.length > 5) h += `<button class="btn-toggle" data-expandido="false" onclick="toggleLista(this, '${idCard}', ${lista.length})">Ver todos (${lista.length}) ▾</button>`;
+                return h + "</div>";
+            };
+
+            // 2. RENDER TABLAS INDIVIDUALES (UN SOLO ATRIBUTO)
+            const renderIndividual = (titulo, lista, idCard, field, colorClass, suffix = "") => {
+                let h = `<div class="card"><div class="card-t">${titulo}</div>`;
+                lista.forEach((j, i) => {
+                    const idBusqueda = superLimpiar(j.n);
+                    let fotoUrl = 'https://i.ibb.co/LzN868X/default-avatar.png';
+                    for (let userId in inscripciones) {
+                        const d = inscripciones[userId];
+                        if (superLimpiar(d.jugadorName || d.nombre) === idBusqueda && d.fotoCarnet) {
+                            fotoUrl = d.fotoCarnet; break;
+                        }
+                    }
+                    const esExtra = i >= 5;
+                    h += `
+                    <div class="row ${esExtra ? 'extra' : ''}" data-card="${idCard}">
+                        <div class="rank">${i + 1}</div>
+                        <div class="img-box"><img src="${fotoUrl}" class="p-img"></div>
+                        <div class="info"><span class="n">${j.n}</span><span class="e">${Array.from(j.equipos).join(" / ")}</span></div>
+                        <div class="val-destacado ${colorClass}">${j[field]}${suffix}</div>
+                    </div>`;
+                });
+                if (lista.length > 5) h += `<button class="btn-toggle" data-expandido="false" onclick="toggleLista(this, '${idCard}', ${lista.length})">Ver todos (${lista.length}) ▾</button>`;
+                return h + "</div>";
+            };
+
+           const pArr = Object.values(statsP);
+            if (pArr.length === 0) {
+                main.innerHTML = '<div id="loading">Sin datos registrados en la pista.</div>';
+                return;
+            }
+
+            // Actualización: Todas las tablas secundarias ordenadas de mayor a menor (descendente)
+            main.innerHTML = 
+                renderPrincipal([...pArr].sort((a,b) => calcularPuntosVencido(b) - calcularPuntosVencido(a)), "p_main") +
+                renderIndividual("🧤 Atajadas Totales", [...pArr].sort((a,b) => b.paradas - a.paradas), "p_ata", "paradas", "color-ata") +
+                renderIndividual("🏒 Goles Recibidos", [...pArr].sort((a,b) => b.goles - a.goles), "p_gr", "goles", "color-gr") +
+                renderIndividual("⏱️ Minutos en Pista", [...pArr].sort((a,b) => b.minutos - a.minutos), "p_min", "minutos", "color-min", "'");	
+        });
+    </script>
+</body>
+</html>

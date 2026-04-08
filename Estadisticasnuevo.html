@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estadísticas Oficiales UERH</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --rojo: #c61a2e; --negro: #1a1a1a; --gris: #f4f4f4; --oro: #d4af37; --azul-p: #0056b3; --naranja-p: #e65100; }
+        body { font-family: 'Roboto', sans-serif; background: var(--gris); margin: 0; padding-bottom: 50px; }
+        .header { background: var(--negro); color: white; padding: 20px; text-align: center; border-bottom: 4px solid var(--rojo); position: sticky; top: 0; z-index: 100; }
+        .header h1 { margin: 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
+        .container { max-width: 500px; margin: auto; padding: 10px; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 25px; overflow: hidden; border: 1px solid #eee; }
+        .card-t { background: #fafafa; padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #eee; color: var(--rojo); text-transform: uppercase; font-size: 0.85rem; }
+        .row { display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f9f9f9; }
+        .row.extra { display: none; }
+        .row.show { display: flex; }
+        .rank { width: 25px; font-weight: bold; color: #bbb; font-size: 0.8rem; }
+        .img-box { position: relative; width: 50px; height: 50px; margin-right: 15px; }
+        .p-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #eee; background: #fff; }
+        .team-logo { position: absolute; bottom: -2px; right: -2px; width: 20px; height: 20px; border-radius: 50%; background: white; border: 1px solid #ddd; padding: 1px; }
+        .info { flex: 1; min-width: 0; }
+        .n { display: block; font-weight: bold; font-size: 0.9rem; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .e { display: block; font-size: 0.7rem; color: #888; text-transform: uppercase; margin-top: 2px; }
+        .v { font-weight: 900; font-size: 1.2rem; color: var(--negro); margin-left: 10px; background: #f0f0f0; padding: 5px 12px; border-radius: 8px; min-width: 35px; text-align: center; }
+        .v.mvp-v { background: var(--negro); color: var(--oro); border: 1px solid var(--oro); }
+        .v.pen2-v { background: #e3f2fd; color: var(--azul-p); border: 1px solid #bbdefb; }
+        .v.pen5-v { background: #fff3e0; color: var(--naranja-p); border: 1px solid #ffe0b2; }
+        .btn-toggle { width: 100%; padding: 12px; background: #fff; border: none; color: #666; font-size: 0.75rem; font-weight: bold; cursor: pointer; border-top: 1px solid #eee; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+<style>
+    .nav-uerh-global {
+        background: #000;
+        display: flex;
+        overflow-x: auto;
+        position: sticky;
+        top: 0;
+        z-index: 10000;
+        border-bottom: 3px solid #c61a2e;
+        padding: 0;
+        scrollbar-width: none; /* Oculta scroll en Firefox */
+    }
+    .nav-uerh-global::-webkit-scrollbar { display: none; } /* Oculta scroll en Chrome/Safari */
+
+    .nav-uerh-global a {
+        color: #888;
+        text-decoration: none;
+        padding: 15px 18px;
+        font-weight: 900;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        white-space: nowrap;
+        transition: 0.3s;
+        border-right: 1px solid #1a1a1a;
+        display: flex;
+        align-items: center;
+    }
+    .nav-uerh-global a.active {
+        color: #fff;
+        background: #c61a2e;
+    }
+    .nav-uerh-global a:hover:not(.active) {
+        color: #fff;
+        background: #111;
+    }
+    /* Estilo especial para el botón de Inicio/Regresar */
+    .btn-nav-home {
+        background: #1a1a1a;
+        color: #c61a2e !important;
+        border-right: 2px solid #c61a2e !important;
+    }
+</style>
+
+<nav class="nav-uerh-global">
+    <a href="UERH.html" class="btn-nav-home">INICIO</a>
+    <a href="Calendario-Posiciones.html" id="m-cal">Calendario</a>
+    <a href="Equipos.html" id="m-equ">Equipos</a>
+    <a href="Estadisticasnuevo.html" id="m-est">Estadísticas</a>
+    <a href="Porteros.html" id="m-por">Ranking Goleros</a>
+</nav>
+
+<script>
+    // Detecta en qué página estamos para iluminar el botón correcto
+    const path = window.location.pathname.split("/").pop();
+    if (path.includes('Calendario')) document.getElementById('m-cal').classList.add('active');
+    if (path.includes('Equipos')) document.getElementById('m-equ').classList.add('active');
+    if (path.includes('Estadisticas')) document.getElementById('m-est').classList.add('active');
+    if (path.includes('Porteros')) document.getElementById('m-por').classList.add('active');
+</script>
+
+
+
+
+    <div class="header"><h1>Estadísticas Oficiales UERH</h1></div>
+    <div id="main" class="container"></div>
+
+    <script>
+        const firebaseConfig = { databaseURL: "https://uerh-t2026-default-rtdb.firebaseio.com" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+       
+function limpiarParaBusqueda(t) {
+    if (!t) return "";
+    return String(t)
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // Quita tildes
+        .replace(/\(.*\)/g, "")         // <--- QUITA TODO LO QUE ESTÉ EN PARÉNTESIS (C, Capitán, etc.)
+        .replace(/[^a-z]/g, "")         // <--- QUITA TODO LO QUE NO SEA LETRA (Números, #, _, espacios)
+        .trim();
+}
+
+
+
+
+
+        function toggleLista(btn, idCard, total) {
+            const filasExtras = document.querySelectorAll(`[data-card="${idCard}"].extra`);
+            const estaExpandido = btn.getAttribute('data-expandido') === 'true';
+            if (estaExpandido) {
+                filasExtras.forEach(f => f.classList.remove('show'));
+                btn.innerHTML = `Ver todos los jugadores (${total}) ▾`;
+                btn.setAttribute('data-expandido', 'false');
+                btn.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                filasExtras.forEach(f => f.classList.add('show'));
+                btn.innerHTML = `Ver menos ▴`;
+                btn.setAttribute('data-expandido', 'true');
+            }
+        }
+
+        db.ref().on('value', snap => {
+            const DATA = snap.val() || {};
+            const main = document.getElementById('main');
+            const inscripciones = DATA.inscripciones ? Object.values(DATA.inscripciones) : [];
+            const resultados = DATA.config?.resultados || {};
+            const logos = DATA.config?.logos || {};
+            const jugadoresConfig = DATA.config?.jugadores || {};
+
+            let stats = {};
+
+            // 1. Cargar base de jugadores inicial
+            Object.values(jugadoresConfig).forEach(j => {
+                const nombreRaw = j.info || j.jugadorName || j.nombre;
+                if (!nombreRaw || /G[1-3]/.test(nombreRaw)) return;
+                const id = limpiarParaBusqueda(nombreRaw);
+                if (!stats[id]) {
+                    stats[id] = { n: nombreRaw, eq: j.equipo || "S/E", g: 0, a: 0, p2: 0, p5: 0 };
+                }
+            });
+
+            // 2. Procesar datos de partidos
+            Object.values(resultados).forEach(p => {
+                if (p.individuales) {
+                    ['local', 'visitante'].forEach(lado => {
+                        const s = p.individuales[lado] || {};
+                        const eqNom = p.equipos?.[lado]?.nombre || "S/E";
+                        
+                        // Goles y Asistencias
+                        ['goles', 'asistencias'].forEach(tipo => {
+                            if (s[tipo]) {
+                                Object.entries(s[tipo]).forEach(([nomRaw, val]) => {
+                                    if (/G[1-3]/.test(nomRaw)) return;
+                                    const id = limpiarParaBusqueda(nomRaw);
+                                    if (!stats[id]) stats[id] = { n: nomRaw, eq: eqNom, g: 0, a: 0, p2: 0, p5: 0 };
+                                    if (tipo === 'goles') stats[id].g += parseInt(val || 0);
+                                    if (tipo === 'asistencias') stats[id].a += parseInt(val || 0);
+                                });
+                            }
+                        });
+
+                        // Penalizaciones (Procesando lista de objetos corregida)
+                        if (s.penalizaciones) {
+                            Object.entries(s.penalizaciones).forEach(([nomRaw, listaFaltas]) => {
+                                if (/G[1-3]/.test(nomRaw)) return;
+                                const id = limpiarParaBusqueda(nomRaw);
+                                if (!stats[id]) stats[id] = { n: nomRaw, eq: eqNom, g: 0, a: 0, p2: 0, p5: 0 };
+                                
+                                // Recorremos la lista de faltas del jugador
+                                if (typeof listaFaltas === 'object') {
+                                    Object.values(listaFaltas).forEach(f => {
+                                        const m = parseInt(f.minutos || 0);
+                                        if (m === 2) stats[id].p2 += 1;
+                                        if (m === 5) stats[id].p5 += 1;
+                                    });
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+
+            const renderRanking = (titulo, lista, tipo, idCard) => {
+                if (lista.length === 0) return "";
+                let h = `<div class="card"><div class="card-t">${titulo}</div>`;
+                
+                lista.forEach((j, i) => {
+                    const idB = limpiarParaBusqueda(j.n);
+                    const reg = inscripciones.find(ins => {
+                        const idIns = limpiarParaBusqueda(ins.jugadorName || "");
+                        return idIns !== "" && (idIns === idB || idIns.includes(idB) || idB.includes(idIns));
+                    }) || {};
+
+                    const esExtra = i >= 5; 
+                    let val = 0, claseV = "";
+                    
+                    if (tipo === 'mvp') { val = j.g + j.a; claseV = "mvp-v"; }
+                    else if (tipo === 'gol') { val = j.g; }
+                    else if (tipo === 'asis') { val = j.a; }
+                    else if (tipo === 'p2') { val = j.p2; claseV = "pen2-v"; }
+                    else if (tipo === 'p5') { val = j.p5; claseV = "pen5-v"; }
+
+                    h += `
+                    <div class="row ${esExtra ? 'extra' : ''}" data-card="${idCard}">
+                        <div class="rank">${i + 1}</div>
+                        <div class="img-box">
+                            <img src="${reg.fotoCarnet || 'https://i.ibb.co/LzN868X/default-avatar.png'}" class="p-img" onerror="this.src='https://i.ibb.co/LzN868X/default-avatar.png'">
+                            ${logos[j.eq] ? `<img src="${logos[j.eq]}" class="team-logo">` : ""}
+                        </div>
+                        <div class="info">
+                            <span class="n">${j.n}</span>
+                            <span class="e">${j.eq}</span>
+                        </div>
+                        <div class="v ${claseV}">${val}</div>
+                    </div>`;
+                });
+
+                if (lista.length > 5) {
+                    h += `<button class="btn-toggle" data-expandido="false" onclick="toggleLista(this, '${idCard}', ${lista.length})">Ver todos los jugadores (${lista.length}) ▾</button>`;
+                }
+                return h + `</div>`;
+            };
+
+            const arr = Object.values(stats);
+            const rMVP = [...arr].sort((a,b) => (b.g+b.a) - (a.g+a.a) || a.n.localeCompare(b.n));
+            const rGol = [...arr].sort((a,b) => b.g - a.g || a.n.localeCompare(b.n));
+            const rAsis = [...arr].sort((a,b) => b.a - a.a || a.n.localeCompare(b.n));
+            const rP2 = [...arr].sort((a,b) => b.p2 - a.p2 || a.n.localeCompare(b.n));
+            const rP5 = [...arr].sort((a,b) => b.p5 - a.p5 || a.n.localeCompare(b.n));
+
+            main.innerHTML = renderRanking("Jugador Más Valioso (G+A)", rMVP, "mvp", "mvp") +
+                             renderRanking("Máximos Goleadores", rGol, "gol", "goles") +
+                             renderRanking("Líderes en Asistencias", rAsis, "asis", "asis") +
+                             renderRanking("Sanciones 2 Minutos (Veces)", rP2, "p2", "p2") +
+                             renderRanking("Sanciones 5 Minutos (Veces)", rP5, "p5", "p5");
+        });
+    </script>
+
+</body>
+</html>
