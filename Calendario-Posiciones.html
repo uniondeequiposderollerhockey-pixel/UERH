@@ -118,6 +118,29 @@
     .container {
         margin-top: 25px !important; 
     }
+
+/* --- AJUSTE PARA MÓVIL (TABLA CORTADA) --- */
+.card-tabla {
+    width: 100%;
+    overflow-x: auto; /* Esto permite que deslices la tabla con el dedo */
+    -webkit-overflow-scrolling: touch;
+    background: white;
+    border-radius: 12px;
+}
+
+.tabla-pos {
+    width: 100%;
+    min-width: 600px; /* Esto evita que las columnas se aplasten en el celular */
+    border-collapse: collapse;
+}
+
+@media (max-width: 480px) {
+    .tabla-pos th, .tabla-pos td {
+        font-size: 0.75rem; /* Letra un poco más chica en el celu */
+        padding: 8px 4px;
+    }
+}
+
 </style>
 
 <nav class="nav-uerh-global">
