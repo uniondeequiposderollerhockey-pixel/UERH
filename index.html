@@ -1,4 +1,11 @@
-<style>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UERH 2026 - Sistema Oficial</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@900&display=swap" rel="stylesheet">
+    <style>
     body, html { margin: 0; padding: 0; height: 100%; background: #000; font-family: 'Roboto', sans-serif; overflow: hidden; }
 
     /* PANTALLA DE INICIO (TELÓN) */
@@ -74,3 +81,54 @@
     body.ready #portada-sistema { opacity: 1; }
     body.ready #video-mini { display: block; }
 </style>
+</head>
+<body>
+
+    <div id="tap-to-start" onclick="iniciarIntro()">
+        <img src="https://i.ibb.co/4RN8Tsyy/2518d8e1-12c2-46c3-8e24-49adefe3074c.jpg" class="logo-pre">
+        <div class="pulse-text">Toca para iniciar</div>
+    </div>
+
+    <video playsinline id="video-background">
+        <source src="https://res.cloudinary.com/dzei0yzti/video/upload/v1774754872/videouerh_xc9pkj.mp4" type="video/mp4">
+    </video>
+
+    <video playsinline muted loop id="video-mini">
+        <source src="https://res.cloudinary.com/dzei0yzti/video/upload/v1774754872/videouerh_xc9pkj.mp4" type="video/mp4">
+    </video>
+
+    <div id="portada-sistema">
+        <img src="https://i.ibb.co/4RN8Tsyy/2518d8e1-12c2-46c3-8e24-49adefe3074c.jpg" class="logo-uerh">
+        <a href="Calendario-Posiciones.html" class="btn-acceso">INGRESAR</a>
+    </div>
+
+    <script>
+        const videoIntro = document.getElementById('video-background');
+        const videoFondo = document.getElementById('video-mini');
+
+        // Si ya vio la intro, saltar el telón
+        if(sessionStorage.getItem('uerh_intro_done')) {
+            document.getElementById('tap-to-start').style.display = 'none';
+            document.body.classList.add('ready');
+            videoFondo.play();
+        }
+
+        function iniciarIntro() {
+            // Ocultar telón y mostrar video
+            document.getElementById('tap-to-start').style.display = 'none';
+            videoIntro.style.display = 'block';
+            
+            // Reproducir con audio
+            videoIntro.play();
+
+            // Al terminar el video (los 3 segundos)
+            videoIntro.onended = function() {
+                videoIntro.style.display = 'none';
+                document.body.classList.add('ready');
+                videoFondo.play();
+                sessionStorage.setItem('uerh_intro_done', 'true');
+            };
+        }
+    </script>
+</body>
+</html>
