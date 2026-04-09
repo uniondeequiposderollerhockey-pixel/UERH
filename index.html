@@ -24,24 +24,54 @@
             object-fit: cover; z-index: 1500; display: none; /* Se muestra al hacer click */
         }
 
-        /* CAPA FINAL (LOGO Y BOTÓN) */
-        #portada-sistema {
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            height: 100vh; width: 100%; background: #000; position: relative; z-index: 1;
-            opacity: 0; transition: opacity 0.8s ease-in;
-        }
+      /* VIDEO CONFIGURADO */
+#video-background {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    /* CAMBIO AQUÍ: 'contain' asegura que el video se vea entero */
+    object-fit: contain; 
+    z-index: 1500; display: none;
+    background: #000; /* Fondo negro para evitar huecos blancos */
+}
+
+/* CAPA FINAL (LOGO Y BOTÓN) */
+#video-mini {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    /* CAMBIO AQUÍ: Mantiene la proporción correcta de fondo */
+    object-fit: contain; 
+    z-index: -1; filter: brightness(0.4); display: none;
+    background: #000;
+}
         #video-mini { /* El video queda de fondo al final */
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             object-fit: cover; z-index: -1; filter: brightness(0.4); display: none;
         }
 
         .logo-uerh { width: 250px; border-radius: 20px; margin-bottom: 40px; box-shadow: 0 0 30px rgba(198,26,46,0.5); }
-        .btn-acceso {
-            padding: 20px 70px; background: #c61a2e; color: white; text-decoration: none;
-            border-radius: 50px; font-weight: 900; text-transform: uppercase; letter-spacing: 4px;
-            border: 3px solid #c61a2e; transition: 0.3s;
-        }
-        .btn-acceso:hover { background: white; color: #c61a2e; border-color: white; }
+        
+/* Estilo base del botón */
+.btn-acceso {
+    padding: 18px 60px; 
+    background: #c61a2e; 
+    color: white; 
+    text-decoration: none;
+    border-radius: 50px; 
+    font-weight: 900; 
+    text-transform: uppercase; 
+    letter-spacing: 3px; 
+    border: 3px solid #c61a2e; 
+    transition: 0.3s;
+    margin-top: 20px; /* Separación del logo */
+}
+
+/* El efecto al tocarlo o pasar el mouse */
+.btn-acceso:hover { 
+    background: transparent; /* Se vuelve transparente */
+    color: white;            /* El texto sigue blanco */
+    border-color: white;     /* El borde resalta en blanco */
+}
+
+
+
 
         /* ESTADO FINAL */
         body.ready #portada-sistema { opacity: 1; }
