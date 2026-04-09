@@ -1,130 +1,76 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UERH 2026 - Sistema Oficial</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@900&display=swap" rel="stylesheet">
-    <style>
-        body, html { margin: 0; padding: 0; height: 100%; background: #000; font-family: 'Roboto', sans-serif; overflow: hidden; }
+<style>
+    body, html { margin: 0; padding: 0; height: 100%; background: #000; font-family: 'Roboto', sans-serif; overflow: hidden; }
 
-        /* PANTALLA DE INICIO (TELÓN) */
-        #tap-to-start {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 2000; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; cursor: pointer;
-        }
-        .logo-pre { width: 180px; border-radius: 20px; margin-bottom: 25px; opacity: 0.8; }
-        .pulse-text { color: #c61a2e; font-size: 1rem; letter-spacing: 5px; animation: pulse 1.5s infinite; text-transform: uppercase; font-weight: 900; }
-        @keyframes pulse { 0% { opacity: 0.4; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1); } 100% { opacity: 0.4; transform: scale(0.95); } }
+    /* PANTALLA DE INICIO (TELÓN) */
+    #tap-to-start {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: #000; z-index: 2000; display: flex; flex-direction: column;
+        justify-content: center; align-items: center; cursor: pointer;
+    }
+    .logo-pre { width: 180px; border-radius: 20px; margin-bottom: 25px; opacity: 0.8; }
+    .pulse-text { color: #c61a2e; font-size: 1rem; letter-spacing: 5px; animation: pulse 1.5s infinite; text-transform: uppercase; font-weight: 900; }
+    @keyframes pulse { 0% { opacity: 0.4; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1); } 100% { opacity: 0.4; transform: scale(0.95); } }
 
-        /* VIDEO CONFIGURADO */
-        #video-background {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            object-fit: cover; z-index: 1500; display: none; /* Se muestra al hacer click */
-        }
+    /* VIDEO CONFIGURADO (CONTAIN PARA ADAPTARSE, NO STRETCH) */
+    #video-background, #video-mini {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain; /* Esto asegura que el video se adapte sin cortes */
+        z-index: 1500;
+        display: none;
+        background: #000; /* Fondo negro por si el video es angosto */
+    }
 
-      /* VIDEO CONFIGURADO */
-#video-background {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    /* CAMBIO AQUÍ: 'contain' asegura que el video se vea entero */
-    object-fit: contain; 
-    z-index: 1500; display: none;
-    background: #000; /* Fondo negro para evitar huecos blancos */
-}
+    /* CAPA FINAL (LOGO Y BOTÓN CENTRADOS) */
+    #portada-sistema {
+        display: flex;
+        flex-direction: column;
+        justify-content: center; /* Centrado vertical absoluto */
+        align-items: center;     /* Centrado horizontal absoluto */
+        height: 100vh;           /* Fuerza a ocupar toda la altura visible */
+        width: 100%;
+        background: transparent; /* Permite ver el video de fondo */
+        position: relative;
+        z-index: 10;
+        opacity: 0;
+        transition: opacity 0.8s ease-in;
+    }
 
-/* CAPA FINAL (LOGO Y BOTÓN) */
-#video-mini {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    /* CAMBIO AQUÍ: Mantiene la proporción correcta de fondo */
-    object-fit: contain; 
-    z-index: -1; filter: brightness(0.4); display: none;
-    background: #000;
-}
-        #video-mini { /* El video queda de fondo al final */
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            object-fit: cover; z-index: -1; filter: brightness(0.4); display: none;
-        }
+    /* EL VIDEO DE FONDO AJUSTADO */
+    #video-mini {
+        display: none;
+        object-fit: contain;
+        z-index: 1; /* Detrás del logo y el botón */
+        filter: brightness(0.4);
+    }
 
-        .logo-uerh { width: 250px; border-radius: 20px; margin-bottom: 40px; box-shadow: 0 0 30px rgba(198,26,46,0.5); }
-        
-/* Estilo base del botón */
-.btn-acceso {
-    padding: 18px 60px; 
-    background: #c61a2e; 
-    color: white; 
-    text-decoration: none;
-    border-radius: 50px; 
-    font-weight: 900; 
-    text-transform: uppercase; 
-    letter-spacing: 3px; 
-    border: 3px solid #c61a2e; 
-    transition: 0.3s;
-    margin-top: 20px; /* Separación del logo */
-}
+    .logo-uerh {
+        width: 250px;
+        max-width: 80%; /* Asegura que no se salga en móviles angostos */
+        border-radius: 20px;
+        margin-bottom: 40px; /* Separación del botón */
+        box-shadow: 0 0 30px rgba(198,26,46,0.5);
+    }
 
-/* El efecto al tocarlo o pasar el mouse */
-.btn-acceso:hover { 
-    background: transparent; /* Se vuelve transparente */
-    color: white;            /* El texto sigue blanco */
-    border-color: white;     /* El borde resalta en blanco */
-}
+    .btn-acceso {
+        padding: 18px 60px;
+        background: #c61a2e;
+        color: white;
+        text-decoration: none;
+        border-radius: 50px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        border: 3px solid #c61a2e;
+        transition: 0.3s;
+    }
 
+    .btn-acceso:hover { background: white; color: #c61a2e; border-color: white; }
 
-
-
-        /* ESTADO FINAL */
-        body.ready #portada-sistema { opacity: 1; }
-        body.ready #video-mini { display: block; }
-    </style>
-</head>
-<body>
-
-    <div id="tap-to-start" onclick="iniciarIntro()">
-        <img src="https://i.ibb.co/4RN8Tsyy/2518d8e1-12c2-46c3-8e24-49adefe3074c.jpg" class="logo-pre">
-        <div class="pulse-text">Toca para iniciar</div>
-    </div>
-
-    <video playsinline id="video-background">
-        <source src="https://res.cloudinary.com/dzei0yzti/video/upload/v1774754872/videouerh_xc9pkj.mp4" type="video/mp4">
-    </video>
-
-    <video playsinline muted loop id="video-mini">
-        <source src="https://res.cloudinary.com/dzei0yzti/video/upload/v1774754872/videouerh_xc9pkj.mp4" type="video/mp4">
-    </video>
-
-    <div id="portada-sistema">
-        <img src="https://i.ibb.co/4RN8Tsyy/2518d8e1-12c2-46c3-8e24-49adefe3074c.jpg" class="logo-uerh">
-        <a href="Calendario-Posiciones.html" class="btn-acceso">INGRESAR</a>
-    </div>
-
-    <script>
-        const videoIntro = document.getElementById('video-background');
-        const videoFondo = document.getElementById('video-mini');
-
-        // Si ya vio la intro, saltar el telón
-        if(sessionStorage.getItem('uerh_intro_done')) {
-            document.getElementById('tap-to-start').style.display = 'none';
-            document.body.classList.add('ready');
-            videoFondo.play();
-        }
-
-        function iniciarIntro() {
-            // Ocultar telón y mostrar video
-            document.getElementById('tap-to-start').style.display = 'none';
-            videoIntro.style.display = 'block';
-            
-            // Reproducir con audio
-            videoIntro.play();
-
-            // Al terminar el video (los 3 segundos)
-            videoIntro.onended = function() {
-                videoIntro.style.display = 'none';
-                document.body.classList.add('ready');
-                videoFondo.play();
-                sessionStorage.setItem('uerh_intro_done', 'true');
-            };
-        }
-    </script>
-</body>
-</html>
+    /* ESTADO FINAL (MOSTRAR PORTADA CUANDO ESTÉ LISTA) */
+    body.ready #portada-sistema { opacity: 1; }
+    body.ready #video-mini { display: block; }
+</style>
