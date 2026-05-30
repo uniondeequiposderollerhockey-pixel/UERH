@@ -100,9 +100,10 @@
             // RECORRIDO COMPLETO DEL NODO INDIVIDUALES
             Object.entries(partido.individuales).forEach(([key, data]) => {
                 
-                // CASO A: Es un equipo (local/visitante) -> Buscamos goles y asistencias
+                // CASO A: Es un equipo (local/visitante)
                 if (key === 'local' || key === 'visitante') {
-                    ['goles', 'asistencias'].forEach(tipo => {
+                    // Procesar Goles, Asistencias y Penalidades estructuradas por categoría
+                    ['goles', 'asistencias', 'p2', 'p5'].forEach(tipo => {
                         if (data[tipo]) {
                             Object.entries(data[tipo]).forEach(([nombreJug, valor]) => {
                                 const idBusqueda = limpiarParaBusqueda(nombreJug);
@@ -110,27 +111,46 @@
                                 if (idReal) {
                                     if (tipo === 'goles') stats[idReal].g += parseInt(valor || 0);
                                     if (tipo === 'asistencias') stats[idReal].a += parseInt(valor || 0);
+                                    if (tipo === 'p2') stats[idReal].p2 += parseInt(valor || 0);
+                                    if (tipo === 'p5') stats[idReal].p5 += parseInt(valor || 0);
                                 }
                             });
                         }
                     });
                     
-                    // TAMBIÉN: Revisamos si dentro de local/visitante hay penalidades por ID
-                    Object.entries(data).forEach(([posibleId, subData]) => {
-                        if (stats[posibleId]) {
-                            stats[posibleId].p2 += parseInt(subData.p2 || 0);
-                            stats[posibleId].p5 += parseInt(subData.p5 || 0);
+                    // Procesar si las penalidades vienen directo bajo el ID/Nombre dentro del equipo
+                    Object.entries(data).forEach(([posibleIdONombre, subData]) => {
+                        if (posibleIdONombre === 'goles' || posibleIdONombre === 'asistencias' || posibleIdONombre === 'p2' || posibleIdONombre === 'p5') return;
+                        
+                        let idReal = stats[posibleIdONombre] ? posibleIdONombre : null;
+                        if (!idReal) {
+                            const idBusqueda = limpiarParaBusqueda(posibleIdONombre);
+                            idReal = Object.keys(stats).find(k => limpiarParaBusqueda(stats[k].n) === idBusqueda);
+                        }
+
+                        if (idReal && subData && typeof subData === 'object') {
+                            stats[idReal].p2 += parseInt(subData.p2 || 0);
+                            stats[idReal].p5 += parseInt(subData.p5 || 0);
+                            stats[idReal].g += parseInt(subData.goles || subData.g || 0);
+                            stats[idReal].a += parseInt(subData.asistencias || subData.a || 0);
                         }
                     });
                 } 
                 
-                // CASO B: Es un ID de jugador directo (como lo hace tu programa de carga)
-                else if (stats[key]) {
-                    stats[key].p2 += parseInt(data.p2 || 0);
-                    stats[key].p5 += parseInt(data.p5 || 0);
-                    // También sumamos goles si los hubiera cargado por ID
-                    stats[key].g += parseInt(data.goles || 0);
-                    stats[key].a += parseInt(data.asistencias || 0);
+                // CASO B: Es un ID de jugador o nombre directo en la raíz de individuales
+                else {
+                    let idReal = stats[key] ? key : null;
+                    if (!idReal) {
+                        const idBusqueda = limpiarParaBusqueda(key);
+                        idReal = Object.keys(stats).find(k => limpiarParaBusqueda(stats[k].n) === idBusqueda);
+                    }
+
+                    if (idReal) {
+                        stats[idReal].p2 += parseInt(data.p2 || 0);
+                        stats[idReal].p5 += parseInt(data.p5 || 0);
+                        stats[idReal].g += parseInt(data.goles || data.g || 0);
+                        stats[idReal].a += parseInt(data.asistencias || data.a || 0);
+                    }
                 }
             });
         });
