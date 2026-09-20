@@ -4,205 +4,383 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UERH - Sistema Integral</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        :root { --rojo: #c61a2e; --negro: #1a1a1a; --gris-f: #f4f4f4; --blanco: #ffffff; }
+        :root { --rojo: #c61a2e; --negro: #1a1a1a; --gris-f: #f4f4f4; --blanco: #ffffff; --azul: #2196F3; }
         body { font-family: 'Roboto', sans-serif; background: var(--gris-f); margin: 0; padding-bottom: 60px; }
         
-        /* Navbar Global */
-        .nav-uerh-global { background: #000; display: flex; align-items: center; position: sticky; top: 0; z-index: 10000; border-bottom: 3px solid var(--rojo); padding: 0 10px; height: 60px; overflow-x: auto; scrollbar-width: none; }
-        .nav-uerh-global a, .nav-uerh-global .nav-item-btn { color: #888; text-decoration: none; padding: 0 15px; font-weight: 900; font-size: 0.7rem; text-transform: uppercase; border: none; background: none; cursor: pointer; display: flex; align-items: center; height: 100%; transition: 0.3s; white-space: nowrap; }
-        .btn-nav-home { color: var(--rojo) !important; background: #1a1a1a !important; border-right: 1px solid #333 !important; }
-        .nav-uerh-global .nav-item-btn.active { color: #fff !important; background: var(--rojo) !important; }
+        .navbar { background: var(--negro); color: white; display: flex; overflow-x: auto; position: sticky; top: 0; z-index: 1000; }
+        .nav-item { padding: 15px; white-space: nowrap; cursor: pointer; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border-bottom: 3px solid transparent; flex: 1; text-align: center; }
+        .nav-item.active { border-bottom: 3px solid var(--rojo); color: var(--rojo); }
 
-        .container { padding: 10px; max-width: 1000px; margin: 25px auto 0; }
+        .container { padding: 10px; max-width: 1000px; margin: auto; } /* Ligeramente más ancho para la tabla */
         .section { display: none; }
         .section.active { display: block; }
 
-        /* Acordeones */
-        .grupo-contenedor { margin-bottom: 15px; }
-        .grupo-header { background: #ddd; padding: 12px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 900; font-size: 0.8rem; text-transform: uppercase; color: #333; }
-        .grupo-contenido { display: block; margin-top: 10px; }
-        .grupo-contenido.hidden { display: none; }
-        .ronda-label { background: var(--negro); color: white; padding: 5px 12px; font-size: 0.65rem; border-radius: 4px; display: inline-block; margin-bottom: 10px; font-weight: bold; }
-
-        /* Calendario Cards */
-        .card { background: var(--blanco); border-radius: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; padding: 20px; border: 1px solid #eee; position: relative; }
-        .sub-header { color: var(--rojo); font-size: 0.7rem; text-align: center; font-weight: bold; text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
-        
-        .score-display { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-        .team-block { flex: 1; text-align: center; }
-        .logo-circle { width: 60px; height: 60px; border-radius: 50%; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 5px; overflow: hidden; }
+        /* Calendario - Diseño Intacto */
+        .menu-fases { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+        .fase-card-btn { background: var(--blanco); border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; cursor: pointer; text-align: left; }
+        #vista-partidos { display: none; }
+        .btn-volver { background: var(--negro); color: white; border: none; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; cursor: pointer; font-weight: bold; font-size: 0.7rem; }
+        .fase-header-card { background: var(--blanco); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #eee; }
+        .fase-titulo-principal { font-size: 1.4rem; font-weight: 700; color: #000; margin: 0; }
+        .fase-subtitulo { font-size: 1rem; color: #666; }
+        .card { background: var(--blanco); border-radius: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; padding: 20px; border: 1px solid #eee; }
+        .sub-header { color: var(--rojo); font-size: 0.75rem; text-align: center; font-weight: bold; text-transform: uppercase; margin-bottom: 20px; }
+        .game-meta { text-align: center; margin-bottom: 20px; }
+        .meta-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
+        .input-pill { border: 1px solid #ddd; padding: 8px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; text-align: center; width: 100px; }
+        .input-sede { display: block; width: 100%; border: none; background: transparent; text-align: center; font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight: bold; }
+        .score-display { display: flex; justify-content: space-between; align-items: flex-start; margin: 15px 0; gap: 10px; }
+        .team-block { flex: 1; text-align: center; max-width: 38%; }
+        .logo-circle { width: 75px; height: 75px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; overflow: hidden; border: 1px solid #f0f0f0; }
         .logo-circle img { width: 80%; height: 80%; object-fit: contain; }
-        .team-name { font-weight: 900; font-size: 0.75rem; text-transform: uppercase; }
+        .logo-circle.empty { background: #fafafa; border: 2px dashed #ddd; box-shadow: none; }
+        .select-equipo { width: 100%; border: 1px solid #ddd; border-radius: 6px; font-size: 0.8rem; font-weight: bold; color: #333; padding: 6px; background: #fff; cursor: pointer; }
+        .marcador-area { display: flex; align-items: center; gap: 8px; padding-top: 15px; }
+        .input-goles { width: 50px; height: 50px; text-align: center; border: 1px solid #eee; border-radius: 12px; font-size: 1.6rem; font-weight: bold; background: #f9f9f9; }
+        .btn-update { width: 100%; background: var(--azul); color: white; border: none; padding: 14px; border-radius: 10px; margin-top: 20px; font-weight: bold; cursor: pointer; font-size: 0.8rem; }
+        .wo-badge { display:inline-block; margin-top:8px; padding:4px 9px; border-radius:999px; background:#1a1a1a; color:white; font-size:.65rem; font-weight:900; letter-spacing:1px; }
+        .ot-badge { display:inline-block; margin-top:8px; padding:4px 9px; border-radius:999px; background:#1a1a1a; color:#ffcc00; font-size:.65rem; font-weight:900; letter-spacing:.6px; }
 
-        .marcador-central { text-align: center; min-width: 110px; }
-        .goles-num { font-size: 1.8rem; font-weight: 900; color: var(--negro); }
-        .status-badge { font-size: 0.6rem; font-weight: 900; padding: 3px 7px; border-radius: 4px; text-transform: uppercase; display: inline-block; margin: 5px 0; }
-        .status-finalizado { background: #e8f5e9; color: #2e7d32; }
-        .status-programado { background: #f5f5f5; color: #666; border: 1px solid #ddd; }
-        .status-definir { background: #fff; color: #999; border: 1px dashed #ccc; }
-        .match-info { font-size: 0.65rem; color: #666; font-weight: bold; text-transform: uppercase; }
-
-        /* Tabla de Posiciones */
-        .card-tabla { background: var(--blanco); border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); overflow-x: auto; border: 1px solid #ddd; }
-        .tabla-pos { width: 100%; border-collapse: collapse; text-align: center; min-width: 500px; }
+        /* --- TABLA DE POSICIONES AMPLIADA --- */
+        .tabla-pos { width: 100%; border-collapse: collapse; font-size: 1.1rem; text-align: center; } /* Aumentado tamaño general de fuente */
         .tabla-pos thead { background: var(--negro); color: white; }
-        .tabla-pos th { padding: 15px 10px; font-size: 0.75rem; text-transform: uppercase; }
-        .tabla-pos td { padding: 12px 10px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
-        .col-equipo { text-align: left !important; display: flex; align-items: center; gap: 10px; font-weight: 800; color: #000; }
-        .mini-logo { width: 25px; height: 25px; object-fit: contain; }
-        
-        /* Columna PTS Roja Original */
-        .pts-header { background: var(--rojo) !important; color: white !important; }
-        .pts-badge { font-weight: 900; color: white; background: var(--rojo); font-size: 1.1rem; }
+        .tabla-pos th { padding: 18px 8px; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; } /* Más espacio en cabezales */
+        .tabla-pos td { padding: 20px 8px; border-bottom: 1px solid #eee; } /* Filas mucho más altas */
+        .col-equipo { text-align: left; display: flex; align-items: center; gap: 12px; padding-left: 15px !important; }
+        .mini-logo { width: 35px; height: 35px; object-fit: contain; } /* Logos de tabla más grandes */
+        .pts-badge { font-weight: 900; color: var(--rojo); font-size: 1.3rem; } /* Puntos resaltados */
+
+        /* Ocultar pestañas */
+        .nav-item[onclick*="showTab('pla')"],
+        .nav-item[onclick*="showTab('est')"],
+        .nav-item[onclick*="showTab('san')"] {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
 
-<nav class="nav-uerh-global">
-    <a href="index.html" class="btn-nav-home">INICIO</a>
-    <button class="nav-item-btn active" id="btn-nav-cal" onclick="showTab('cal')">Calendario</button>
-    <button class="nav-item-btn" id="btn-nav-pos" onclick="showTab('pos')">Posiciones</button>
-    <a href="Equipos.html">Equipos</a>
-    <a href="Estadisticasnuevo.html">Estadísticas</a>
-</nav>
-
-<div class="container">
-    <div id="cal" class="section active">
-        <div id="menu-fases">
-            <div onclick="verFase('regular')" class="card" style="cursor:pointer"><h3>Temporada Regular</h3><p>3 Rondas</p></div>
-            <div onclick="verFase('playoffs')" class="card" style="cursor:pointer"><h3>Playoffs (BO3)</h3></div>
-            <div onclick="verFase('final')" class="card" style="cursor:pointer"><h3>Gran Final</h3></div>
-        </div>
-        <div id="vista-partidos" style="display:none;">
-            <button class="btn-nav-home" style="padding:10px; border-radius:8px; cursor:pointer; margin-bottom:15px;" onclick="volverAlMenu()">← VOLVER AL MENÚ</button>
-            <div id="render-partidos-fase"></div>
-        </div>
+    <div class="navbar">
+        <div class="nav-item active" onclick="showTab('cal')">Calendario</div>
+        <div class="nav-item" onclick="showTab('pos')">Posiciones</div>
+        <div class="nav-item" onclick="showTab('pla')">Plantillas</div>
+        <div class="nav-item" onclick="showTab('est')">Estadísticas</div>
+        <div class="nav-item" onclick="showTab('san')">Sanciones</div>
     </div>
 
-    <div id="pos" class="section">
-        <div class="card-tabla">
-            <table class="tabla-pos">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th style="text-align:left;">EQUIPO</th>
-                        <th>PJ</th><th>PG</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th>
-                        <th class="pts-header">PTS</th>
-                    </tr>
-                </thead>
-                <tbody id="cuerpo-tabla"></tbody>
-            </table>
+    <div class="container">
+        <div id="cal" class="section active">
+            <div id="menu-fases" class="menu-fases">
+                <div class="fase-card-btn" onclick="verFase('regular')">
+                    <h3>Temporada Regular</h3>
+                    <p>3 Rondas</p>
+                </div>
+                <div class="fase-card-btn" onclick="verFase('playoffs')">
+                    <h3>Playoffs (Best of 3)</h3>
+                    <p>Juegos 1, 2 y 3</p>
+                </div>
+                <div class="fase-card-btn" onclick="verFase('final')">
+                    <h3>Gran Final</h3>
+                    <p>Final y 3er Puesto</p>
+                </div>
+            </div>
+            <div id="vista-partidos">
+                <button class="btn-volver" onclick="volverAlMenu()">← VOLVER AL MENÚ</button>
+                <div id="fase-header-dinamico"></div>
+                <div id="render-partidos-fase"></div>
+            </div>
         </div>
+        
+        <div id="pos" class="section"></div>
+        <div id="pla" class="section"></div>
+        <div id="est" class="section"></div>
+        <div id="san" class="section"></div>
     </div>
-</div>
+
+    <script>
+        const firebaseConfig = { databaseURL: "https://uerh-t2026-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let DATA = {};
+        let faseActiva = null;
+
+        const ESTRUCTURA_FASES = {
+            regular: {
+                titulo: "Temporada Regular", sub: "3 Rondas",
+                ids: ['ronda1-fecha1A', 'ronda1-fecha1B', 'ronda1-fecha2A', 'ronda1-fecha2B', 'ronda1-fecha3A', 'ronda1-fecha3B', 'ronda2-fecha1A', 'ronda2-fecha1B', 'ronda2-fecha2A', 'ronda2-fecha2B', 'ronda2-fecha3A', 'ronda2-fecha3B', 'ronda3-fecha1A', 'ronda3-fecha1B', 'ronda3-fecha2A', 'ronda3-fecha2B', 'ronda3-fecha3A', 'ronda3-fecha3B']
+            },
+            playoffs: {
+                titulo: "Playoffs (Best of 3)", sub: "Juegos 1, 2 y 3",
+                ids: ['juego1-semifinalA', 'juego1-semifinalB', 'juego2-semifinalA', 'juego2-semifinalB', 'juego3-semifinalA', 'juego3-semifinalB']
+            },
+            final: {
+                titulo: "Gran Final", sub: "Final y 3er Puesto",
+                ids: ['juego1-3puesto', 'juego1-granfinal', 'juego2-3puesto', 'juego2-granfinal', 'juego3-3puesto', 'juego3-granfinal']
+            }
+        };
+
+        db.ref().on('value', snap => {
+            DATA = snap.val() || {};
+            if(faseActiva) verFase(faseActiva);
+            renderPosiciones();
+        });
+
+        function showTab(id) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            event.currentTarget.classList.add('active');
+            
+            if(id === 'est') renderEstadisticas();
+            if(id !== 'cal') volverAlMenu();
+        }
+
+        function renderPosiciones() {
+            const res = DATA.config?.resultados || {};
+            const logos = DATA.config?.logos || {};
+            const equiposNombres = Object.keys(logos);
+            let tabla = {};
+            equiposNombres.forEach(nombre => {
+                tabla[nombre] = { nombre: nombre, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0 };
+            });
+
+            Object.keys(res).forEach(id => {
+                const p = res[id];
+                if (id.startsWith('ronda') && p.individuales) {
+                    const loc = p.equipos?.local;
+                    const vis = p.equipos?.visitante;
+                    if (loc && vis && tabla[loc.nombre] && tabla[vis.nombre]) {
+                        const gL = parseInt(loc.goles) || 0, gV = parseInt(vis.goles) || 0;
+                        tabla[loc.nombre].pj++; tabla[vis.nombre].pj++;
+                        tabla[loc.nombre].gf += gL; tabla[loc.nombre].gc += gV;
+                        tabla[vis.nombre].gf += gV; tabla[vis.nombre].gc += gL;
+                        // PUNTOS UERH:
+                        // Victoria normal/WO = 3-0
+                        // Partido definido en OT = 2 al ganador y 1 al perdedor.
+                        // Primero detectamos explícitamente si el partido terminó en overtime.
+                        const modoFin = String(p.metadata?.modo_fin || p.modo_fin || p.periodo || '').toUpperCase();
+                        const esOT = modoFin === 'OT' || modoFin === 'OVERTIME';
+
+                        const ptsLGuardados = Number(loc.puntos);
+                        const ptsVGuardados = Number(vis.puntos);
+                        const hayPuntosGuardados = Number.isFinite(ptsLGuardados) && Number.isFinite(ptsVGuardados);
+
+                        let ptsPartidoL, ptsPartidoV;
+
+                        if (gL > gV) {
+                            tabla[loc.nombre].pg++;
+                            tabla[vis.nombre].pp++;
+                            if (esOT) {
+                                ptsPartidoL = 2;
+                                ptsPartidoV = 1;
+                            } else if (hayPuntosGuardados) {
+                                ptsPartidoL = ptsLGuardados;
+                                ptsPartidoV = ptsVGuardados;
+                            } else {
+                                ptsPartidoL = 3;
+                                ptsPartidoV = 0;
+                            }
+                        }
+                        else if (gL < gV) {
+                            tabla[vis.nombre].pg++;
+                            tabla[loc.nombre].pp++;
+                            if (esOT) {
+                                ptsPartidoL = 1;
+                                ptsPartidoV = 2;
+                            } else if (hayPuntosGuardados) {
+                                ptsPartidoL = ptsLGuardados;
+                                ptsPartidoV = ptsVGuardados;
+                            } else {
+                                ptsPartidoL = 0;
+                                ptsPartidoV = 3;
+                            }
+                        }
+                        else {
+                            tabla[loc.nombre].pe++;
+                            tabla[vis.nombre].pe++;
+                            ptsPartidoL = 1;
+                            ptsPartidoV = 1;
+                        }
+
+                        tabla[loc.nombre].pts += ptsPartidoL;
+                        tabla[vis.nombre].pts += ptsPartidoV;
+                    }
+                }
+            });
+
+            const tablaSorted = Object.values(tabla).sort((a, b) => b.pts !== a.pts ? b.pts - a.pts : (b.gf - b.gc) - (a.gf - a.gc));
+            let html = `<div class="card" style="padding:0; overflow-x:auto;"><table class="tabla-pos"><thead><tr><th>#</th><th style="text-align:left; padding-left:15px;">EQUIPO</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th style="background:var(--rojo)">PTS</th></tr></thead><tbody>`;
+            tablaSorted.forEach((eq, index) => {
+                const dg = eq.gf - eq.gc;
+                html += `<tr><td style="font-weight:bold;">${index + 1}</td><td class="col-equipo"><img src="${logos[eq.nombre]}" class="mini-logo"><span style="font-weight:bold;">${eq.nombre}</span></td><td>${eq.pj}</td><td>${eq.pg}</td><td>${eq.pe}</td><td>${eq.pp}</td><td>${eq.gf}</td><td>${eq.gc}</td><td style="color:${dg > 0 ? 'green' : dg < 0 ? 'red' : 'gray'}; font-weight:bold;">${dg > 0 ? '+' + dg : dg}</td><td class="pts-badge">${eq.pts}</td></tr>`;
+            });
+            html += `</tbody></table></div>`;
+            document.getElementById('pos').innerHTML = html;
+        }
+
+        function verFase(key) {
+            faseActiva = key;
+            const fase = ESTRUCTURA_FASES[key], res = DATA.config?.resultados || {}, logos = DATA.config?.logos || {}, equiposArr = Object.keys(logos);
+            document.getElementById('menu-fases').style.display = 'none';
+            document.getElementById('vista-partidos').style.display = 'block';
+            document.getElementById('fase-header-dinamico').innerHTML = `<div class="fase-header-card"><div class="fase-titulo-principal">${fase.titulo}</div><div class="fase-subtitulo">${fase.sub}</div></div>`;
+            let html = '';
+            fase.ids.forEach(id => {
+                const d = res[id];
+                html += `<div class="card"><div class="sub-header">${id.replace(/-/g, ' ').toUpperCase()}</div>${renderGameUI(id, d, logos, equiposArr)}</div>`;
+            });
+            document.getElementById('render-partidos-fase').innerHTML = html;
+            if(window.flatpickr) {
+                flatpickr(".fp", { dateFormat: "d-M" });
+                flatpickr(".tp", { enableTime: true, noCalendar: true, dateFormat: "H:i", time_24hr: true });
+            }
+        }
+
+        function volverAlMenu() {
+            faseActiva = null;
+            document.getElementById('menu-fases').style.display = 'flex';
+            document.getElementById('vista-partidos').style.display = 'none';
+        }
+
+        function renderGameUI(id, d, logos, equiposArr) {
+            const locNombre = d?.equipos?.local?.nombre || "", visNombre = d?.equipos?.visitante?.nombre || "";
+            const locLogo = logos[locNombre] ? `<img src="${logos[locNombre]}">` : "";
+            const visLogo = logos[visNombre] ? `<img src="${logos[visNombre]}">` : "";
+            const modoFin = String(d?.metadata?.modo_fin || d?.modo_fin || d?.periodo || '').toUpperCase();
+            const esWO = d?.metadata?.wo === true || modoFin === 'WO';
+            const esOT = !esWO && (modoFin === 'OT' || modoFin === 'OVERTIME');
+            const marcaFin = esWO
+                ? `<div style="text-align:center;"><span class="wo-badge">WO</span></div>`
+                : esOT
+                    ? `<div style="text-align:center;"><span class="ot-badge">OVERTIME</span></div>`
+                    : "";
+            return `<div class="game-meta"><div class="meta-row"><input type="text" class="input-pill fp" id="d-${id}" value="${d?.fecha || ''}" placeholder="FECHA"><input type="text" class="input-pill tp" id="h-${id}" value="${d?.hora || ''}" placeholder="HORA"></div><input type="text" class="input-sede" id="s-${id}" value="${d?.sede || ''}" placeholder="LUGAR / SEDE"></div><div class="score-display"><div class="team-block"><div class="logo-circle ${!locLogo ? 'empty' : ''}">${locLogo}</div><select class="select-equipo" id="l-${id}"><option value="" ${!locNombre ? 'selected' : ''}>-- Seleccionar --</option>${equiposArr.map(e => `<option value="${e}" ${e === locNombre ? 'selected' : ''}>${e}</option>`).join('')}</select></div><div><div class="marcador-area"><input type="number" class="input-goles" id="gl-${id}" value="${d?.equipos?.local?.goles || 0}"><span style="color:#ccc; font-weight:bold; font-size:1.5rem;">-</span><input type="number" class="input-goles" id="gv-${id}" value="${d?.equipos?.visitante?.goles || 0}"></div>${marcaFin}</div><div class="team-block"><div class="logo-circle ${!visLogo ? 'empty' : ''}">${visLogo}</div><select class="select-equipo" id="v-${id}"><option value="" ${!visNombre ? 'selected' : ''}>-- Seleccionar --</option>${equiposArr.map(e => `<option value="${e}" ${e === visNombre ? 'selected' : ''}>${e}</option>`).join('')}</select></div></div><button class="btn-update" onclick="guardarPartido('${id}')">ACTUALIZAR DATOS</button>`;
+        }
+
+        function guardarPartido(id) {
+            const updates = {};
+            updates[`config/resultados/${id}/fecha`] = document.getElementById(`d-${id}`).value;
+            updates[`config/resultados/${id}/hora`] = document.getElementById(`h-${id}`).value;
+            updates[`config/resultados/${id}/sede`] = document.getElementById(`s-${id}`).value;
+            updates[`config/resultados/${id}/equipos/local/nombre`] = document.getElementById(`l-${id}`).value;
+            updates[`config/resultados/${id}/equipos/local/goles`] = parseInt(document.getElementById(`gl-${id}`).value) || 0;
+            updates[`config/resultados/${id}/equipos/visitante/nombre`] = document.getElementById(`v-${id}`).value;
+            updates[`config/resultados/${id}/equipos/visitante/goles`] = parseInt(document.getElementById(`gv-${id}`).value) || 0;
+            db.ref().update(updates).then(() => alert("Sincronizado con éxito.")).catch(err => alert("Error: " + err.message));
+        }
+
+        function renderEstadisticas() {
+            const container = document.getElementById('est');
+            const res = DATA.config?.resultados || {};
+            const inscritos = DATA.inscripciones ? Object.values(DATA.inscripciones) : [];
+            const LOGOS = DATA.config?.logos || {};
+            let goleadores = {}, asistidores = {};
+
+            Object.keys(res).forEach(id => {
+                const p = res[id];
+                if (p.individuales) {
+                    ['local', 'visitante'].forEach(lado => {
+                        const stats = p.individuales[lado];
+                        const eq = p.equipos?.[lado]?.nombre;
+                        if (stats.goles) Object.entries(stats.goles).forEach(([j, v]) => { if(!goleadores[j]) goleadores[j]={v:0, eq:eq}; goleadores[j].v += v; });
+                        if (stats.asistencias) Object.entries(stats.asistencias).forEach(([j, v]) => { if(!asistidores[j]) asistidores[j]={v:0, eq:eq}; asistidores[j].v += v; });
+                    });
+                }
+            });
+
+            const crearRanking = (titulo, data) => {
+                const sorted = Object.entries(data).map(([n, d]) => ({ n, ...d })).sort((a, b) => b.v - a.v).slice(0, 10);
+                let h = `<div class="card"><h3 style="color:var(--rojo); font-size:0.9rem; text-transform:uppercase; border-bottom:1px solid #eee; padding-bottom:10px;">${titulo}</h3>`;
+                sorted.forEach((j, i) => {
+                    const nombreLimpio = j.n.includes("#") ? j.n.split(" ").slice(1).join(" ").trim().toLowerCase() : j.n.trim().toLowerCase();
+                    const reg = inscritos.find(ins => (ins.jugadorName || "").toLowerCase().includes(nombreLimpio)) || {};
+                    h += `<div style="display:flex; align-items:center; padding:10px 0; border-bottom:1px solid #f9f9f9;">
+                        <span style="width:20px; font-weight:bold; color:#ccc;">${i+1}</span>
+                        <div style="position:relative; width:40px; height:40px; margin: 0 10px;">
+                            <img src="${reg.fotoCarnet || 'https://i.ibb.co/LzN868X/default-avatar.png'}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;" onerror="this.src='https://i.ibb.co/LzN868X/default-avatar.png'">
+                            <img src="${LOGOS[j.eq] || ''}" style="position:absolute; bottom:0; right:0; width:15px; height:15px; background:white; border-radius:50%; border:1px solid #ddd;">
+                        </div>
+                        <div style="flex:1;"><div style="font-weight:bold; font-size:0.8rem;">${j.n}</div><div style="font-size:0.6rem; color:#888;">${j.eq}</div></div>
+                        <div style="background:var(--negro); color:white; padding:2px 8px; border-radius:4px; font-weight:bold;">${j.v}</div>
+                    </div>`;
+                });
+                return h + `</div>`;
+            };
+            container.innerHTML = crearRanking("Máximos Goleadores", goleadores) + crearRanking("Líderes en Asistencias", asistidores);
+        }
+
+        function autoSincronizarFotos() {
+            db.ref().once('value', snap => {
+                const DATA = snap.val();
+                if (!DATA.inscripciones || !DATA.config?.jugadores) return;
+                const inscripciones = Object.values(DATA.inscripciones);
+                const jugadores = DATA.config.jugadores;
+                const actualizaciones = {};
+                let huboCambios = false;
+                Object.keys(jugadores).forEach(id => {
+                    const j = jugadores[id];
+                    const nombreBusqueda = (j.info || j.jugadorName || "").toLowerCase().trim();
+                    const nombreLimpio = nombreBusqueda.includes("#") ? nombreBusqueda.split(" ").slice(1).join(" ") : nombreBusqueda;
+                    const registro = inscripciones.find(ins => {
+                        const nDB = (ins.jugadorName || "").toLowerCase().trim();
+                        const nCap = (ins.capitanName || "").toLowerCase().trim();
+                        return nDB.includes(nombreLimpio) || nCap.includes(nombreLimpio);
+                    });
+                    if (registro && registro.fotoCarnet && j.fotoUrl !== registro.fotoCarnet) {
+                        actualizaciones[`config/jugadores/${id}/fotoUrl`] = registro.fotoCarnet;
+                        huboCambios = true;
+                    }
+                });
+                if (huboCambios) { db.ref().update(actualizaciones); }
+            });
+        }
+        autoSincronizarFotos();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
 <script>
-    const firebaseConfig = { databaseURL: "https://uerh-t2026-default-rtdb.firebaseio.com/" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    let DATA = {};
-    let faseActiva = null;
+    // FUNCIÓN DE BLOQUEO DE SEGURIDAD UERH
+    function aplicarSeguridadGlobal() {
+        const esAdmin = window.parent.esAdmin; // Consulta al Sistema Global si es admin
 
-    db.ref('config').on('value', snap => {
-        DATA = snap.val() || {};
-        procesarTabla(DATA.resultados || {}, DATA.logos || {});
-        if(faseActiva) verFase(faseActiva);
-    });
-
-    function showTab(id) {
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        document.getElementById('btn-nav-cal').classList.toggle('active', id === 'cal');
-        document.getElementById('btn-nav-pos').classList.toggle('active', id === 'pos');
-    }
-
-    function toggleGrupo(id) { document.getElementById(id).classList.toggle('hidden'); }
-
-    function verFase(key) {
-        faseActiva = key;
-        const fase = ESTRUCTURA_FASES[key], res = DATA.resultados || {}, logos = DATA.logos || {};
-        document.getElementById('menu-fases').style.display = 'none';
-        document.getElementById('vista-partidos').style.display = 'block';
-        
-        let jugados = [], proximos = [];
-        fase.ids.forEach(id => {
-            const d = res[id];
-            const finalizado = (parseInt(d?.equipos?.local?.puntos) || 0) + (parseInt(d?.equipos?.visitante?.puntos) || 0) > 0;
-            const tarjeta = generarTarjeta(id, d, logos, finalizado);
-            if (finalizado) jugados.push(tarjeta); else proximos.push(tarjeta);
-        });
-
-        document.getElementById('render-partidos-fase').innerHTML = `
-            <div class="grupo-contenedor">
-                <div class="grupo-header" onclick="toggleGrupo('cont-prox')"><span>Próximos Partidos (${proximos.length})</span><span>▼</span></div>
-                <div id="cont-prox" class="grupo-contenido">${proximos.join("")}</div>
-            </div>
-            <div class="grupo-contenedor">
-                <div class="grupo-header" onclick="toggleGrupo('cont-jug')"><span>Partidos Jugados (${jugados.length})</span><span>▼</span></div>
-                <div id="cont-jug" class="grupo-contenido">${jugados.reverse().join("")}</div>
-            </div>`;
-    }
-
-    function generarTarjeta(id, d, logos, finalizado) {
-        const locN = d?.equipos?.local?.nombre || "TBD", visN = d?.equipos?.visitante?.nombre || "TBD";
-        const fecha = d?.fecha && d.fecha.trim() !== "" ? d.fecha : null;
-        let rondaHtml = id.includes('ronda') ? `<div class="ronda-label">Ronda ${id.split('-')[0].replace('ronda','')}</div>` : "";
-        let status = finalizado ? `<div class="status-badge status-finalizado">Finalizado</div>` : 
-                     (fecha ? `<div class="status-badge status-programado">Programado</div>` : `<div class="status-badge status-definir">Por definir</div>`);
-
-        return `
-        <div class="card" style="border-left: 5px solid ${finalizado ? '#ccc' : '#333'}">
-            ${rondaHtml}<div class="sub-header">${id.replace(/-/g, ' ').toUpperCase()}</div>
-            <div class="score-display">
-                <div class="team-block"><div class="logo-circle"><img src="${logos[locN]||''}"></div><div class="team-name">${locN}</div></div>
-                <div class="marcador-central">
-                    <div style="display:flex; justify-content:center; align-items:center; gap:8px;">
-                        <span class="goles-num">${d?.equipos?.local?.goles || 0}</span><span style="color:#ccc;">:</span><span class="goles-num">${d?.equipos?.visitante?.goles || 0}</span>
-                    </div>
-                    ${status}<div class="match-info"><div>${d?.sede || 'TBD'}</div><div style="color:var(--rojo)">${fecha || 'POR DEFINIR'} ${d?.hora || ''}</div></div>
-                </div>
-                <div class="team-block"><div class="logo-circle"><img src="${logos[visN]||''}"></div><div class="team-name">${visN}</div></div>
-            </div>
-        </div>`;
-    }
-
-    function volverAlMenu() { faseActiva = null; document.getElementById('menu-fases').style.display = 'block'; document.getElementById('vista-partidos').style.display = 'none'; }
-
-    function procesarTabla(resultados, logos) {
-        let tabla = {};
-        Object.keys(logos).forEach(n => tabla[n] = { n, pj:0, pg:0, pp:0, gf:0, gc:0, pts:0 });
-        Object.values(resultados).forEach(p => {
-            const l = p.equipos?.local, v = p.equipos?.visitante;
-            if (l && v && tabla[l.nombre] && (parseInt(l.puntos) + parseInt(v.puntos) > 0)) {
-                const gL = parseInt(l.goles) || 0, gV = parseInt(v.goles) || 0;
-                tabla[l.nombre].pj++; tabla[v.nombre].pj++;
-                tabla[l.nombre].gf += gL; tabla[l.nombre].gc += gV;
-                tabla[v.nombre].gf += gV; tabla[v.nombre].gc += gL;
-                tabla[l.nombre].pts += parseInt(l.puntos); tabla[v.nombre].pts += parseInt(v.puntos);
-                if(gL > gV) { tabla[l.nombre].pg++; tabla[v.nombre].pp++; }
-                else { tabla[v.nombre].pg++; tabla[l.nombre].pp++; }
+        if (!esAdmin) {
+            console.log("Modo Invitado: Bloqueando funciones de escritura.");
+            
+            // 1. Deshabilitar todas las funciones de Firebase de escritura
+            if (typeof db !== 'undefined') {
+                db.ref = function() { 
+                    console.error("Acceso denegado: No tienes permisos de administrador.");
+                    return { set: () => {}, update: () => {}, push: () => ({ set: () => {} }), remove: () => {} };
+                };
             }
-        });
-        const rank = Object.values(tabla).sort((a,b) => b.pts - a.pts || (b.gf-b.gc) - (a.gf-a.gc));
-        let h = "";
-        rank.forEach((eq, i) => {
-            const dg = eq.gf - eq.gc;
-            h += `<tr><td>${i+1}</td><td class="col-equipo"><img src="${logos[eq.n]}" class="mini-logo">${eq.n}</td>
-            <td>${eq.pj}</td><td>${eq.pg}</td><td>${eq.pp}</td><td>${eq.gf}</td><td>${eq.gc}</td>
-            <td style="color:${dg>0?'green':(dg<0?'red':'black')}">${dg>0?'+'+dg:dg}</td><td class="pts-badge">${eq.pts}</td></tr>`;
-        });
-        document.getElementById('cuerpo-tabla').innerHTML = h;
+
+            // 2. Eliminar visualmente cualquier botón de edición/guardado
+            const selectoresBloqueo = [
+                '.btn-update', '.btn-save', '.btn-edit', 
+                'button:not(.btn-toggle)', // Bloquea botones excepto los de "Ver más"
+                'input', 'select', '.modal'
+            ];
+            
+            selectoresBloqueo.forEach(sel => {
+                document.querySelectorAll(sel).forEach(el => {
+                    el.style.display = 'none'; 
+                    el.disabled = true;
+                });
+            });
+
+            // 3. Bloquear funciones específicas de tus archivos
+            window.abrirFicha = function() { alert("Acceso restringido a administradores."); };
+            window.guardarManual = function() { return false; };
+        }
     }
 
-    const ESTRUCTURA_FASES = {
-        regular: { ids: ['ronda1-fecha1A', 'ronda1-fecha1B', 'ronda1-fecha2A', 'ronda1-fecha2B', 'ronda1-fecha3A', 'ronda1-fecha3B', 'ronda2-fecha1A', 'ronda2-fecha1B', 'ronda2-fecha2A', 'ronda2-fecha2B', 'ronda2-fecha3A', 'ronda2-fecha3B', 'ronda3-fecha1A', 'ronda3-fecha1B', 'ronda3-fecha2A', 'ronda3-fecha2B', 'ronda3-fecha3A', 'ronda3-fecha3B'] },
-        playoffs: { ids: ['juego1-semifinalA', 'juego1-semifinalB', 'juego2-semifinalA', 'juego2-semifinalB', 'juego3-semifinalA', 'juego3-semifinalB'] },
-        final: { ids: ['juego1-3puesto', 'juego1-granfinal', 'juego2-3puesto', 'juego2-granfinal', 'juego3-3puesto', 'juego3-granfinal'] }
-    };
 </script>
+
 </body>
 </html>
