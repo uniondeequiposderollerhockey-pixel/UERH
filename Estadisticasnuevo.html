@@ -10,9 +10,7 @@
     <style>
         :root { --rojo: #c61a2e; --negro: #1a1a1a; --gris: #f4f4f4; --oro: #d4af37; --azul-p: #0056b3; --naranja-p: #e65100; }
         body { font-family: 'Roboto', sans-serif; background: var(--gris); margin: 0; padding-bottom: 50px; }
-        .header { background: var(--negro); color: white; padding: 20px; text-align: center; border-bottom: 4px solid var(--rojo); position: sticky; top: 50px; z-index: 100; }
-        .header h1 { margin: 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
-        .container { max-width: 500px; margin: auto; padding: 10px; }
+        .container { max-width: 500px; margin: auto; padding: 16px 10px 10px; }
         .card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 25px; overflow: hidden; border: 1px solid #eee; }
         .card-t { background: #fafafa; padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #eee; color: var(--rojo); text-transform: uppercase; font-size: 0.85rem; }
         .row { display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f9f9f9; }
@@ -30,7 +28,30 @@
         .v.pen2-v { background: #e3f2fd; color: var(--azul-p); border: 1px solid #bbdefb; }
         .v.pen5-v { background: #fff3e0; color: var(--naranja-p); border: 1px solid #ffe0b2; }
         .btn-toggle { width: 100%; padding: 12px; background: #fff; border: none; color: #666; font-size: 0.75rem; font-weight: bold; cursor: pointer; border-top: 1px solid #eee; text-transform: uppercase; }
+        .diag { background:#fff; border:1px solid #ddd; border-radius:12px; margin-bottom:18px; overflow:hidden; }
+        .diag-h { padding:11px 14px; font-weight:900; font-size:.75rem; text-transform:uppercase; display:flex; justify-content:space-between; gap:8px; }
+        .diag-b { padding:10px 14px; border-top:1px solid #eee; font-size:.7rem; line-height:1.55; color:#555; }
+        .diag-ok { color:#2e7d32; font-weight:900; }
+        .diag-warn { color:#c61a2e; font-weight:900; }
+        .diag details { border-top:1px solid #eee; }
+        .diag summary { cursor:pointer; padding:10px 14px; font-size:.7rem; font-weight:900; }
+        .diag-pre { padding:0 14px 12px; font-size:.64rem; white-space:pre-wrap; word-break:break-word; color:#555; }
+
         
+
+        .manual-penales { background:#fff; border:1px solid #ddd; border-radius:12px; margin-bottom:18px; overflow:hidden; }
+        .manual-penales .mp-head { padding:12px 15px; background:#fafafa; border-bottom:1px solid #eee; font-weight:900; color:var(--rojo); text-transform:uppercase; font-size:.82rem; }
+        .manual-penales .mp-body { padding:14px; }
+        .manual-penales select { width:100%; padding:11px 12px; border:1px solid #ccc; border-radius:8px; background:#fff; font-weight:700; margin-bottom:10px; }
+        .manual-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .manual-field { display:flex; flex-direction:column; gap:5px; }
+        .manual-field label { font-size:.68rem; font-weight:900; text-transform:uppercase; color:#555; }
+        .manual-field input { width:100%; box-sizing:border-box; padding:11px 12px; border:1px solid #ccc; border-radius:8px; font-size:1rem; font-weight:900; text-align:center; }
+        .btn-save-pen { width:100%; margin-top:10px; border:none; border-radius:8px; padding:12px; font-weight:900; cursor:pointer; background:#1a1a1a; color:#fff; }
+        .manual-current { margin-top:10px; font-size:.72rem; color:#666; line-height:1.5; }
+        .manual-current strong { color:#222; }
+        .manual-note { margin-top:8px; font-size:.66rem; color:#888; }
+
         /* Nav Global */
         .nav-uerh-global { background: #000; display: flex; overflow-x: auto; position: sticky; top: 0; z-index: 10000; border-bottom: 3px solid #c61a2e; padding: 0; scrollbar-width: none; }
         .nav-uerh-global::-webkit-scrollbar { display: none; }
@@ -49,7 +70,6 @@
     <a href="Porteros.html">Ranking Goleros</a>
 </nav>
 
-<div class="header"><h1>Estadísticas Oficiales UERH</h1></div>
 <div id="main" class="container"></div>
 
 <script>
@@ -76,90 +96,259 @@
         }
     }
 
-    db.ref().on('value', snap => {
-        const DATA = snap.val() || {};
-        const main = document.getElementById('main');
-        const inscripciones = DATA.inscripciones ? Object.values(DATA.inscripciones) : [];
-        const resultados = DATA.config?.resultados || {};
-        const logos = DATA.config?.logos || {};
-        const jugadoresConfig = DATA.config?.jugadores || {};
 
-        let stats = {};
+    // ============================================================
+    // ESTADÍSTICAS UERH
+    // Goles/asistencias: automáticos desde config/resultados.
+    // Penalidades P2/P5: EXCLUSIVAMENTE MANUALES.
+    // Se guardan en config/estadisticas_manual_penalidades/{idJugador}
+    // ============================================================
 
-        // 1. Cargamos todos los jugadores de la configuración
-        Object.entries(jugadoresConfig).forEach(([idFirebase, j]) => {
-            const nombreRaw = j.info || j.jugadorName || j.nombre;
-            if (!nombreRaw || /G[1-3]/.test(nombreRaw)) return;
-            stats[idFirebase] = { n: nombreRaw, eq: j.equipo || "S/E", g: 0, a: 0, p2: 0, p5: 0 };
+    let CACHE_RESULTADOS = {};
+    let CACHE_JUGADORES = {};
+    let CACHE_LOGOS = {};
+    let CACHE_INSCRIPCIONES = [];
+    let CACHE_PENALES = {};
+
+    function limpiar(t) {
+        return String(t || "")
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[.#$/\[\]_]/g, " ")
+            .replace(/\(.*?\)/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function identidad(t) {
+        let s = limpiar(t);
+        s = s.replace(/^#?\s*\d+\s*[-–—:]?\s*/, "").trim();
+        return s.replace(/[^a-z0-9]/g, "");
+    }
+
+    function numero(v) {
+        if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+        if (typeof v === "string") return parseInt(v) || 0;
+        return 0;
+    }
+
+    function resolver(ref, equipo, stats) {
+        const clave = String(ref || "");
+        if (!clave) return null;
+        if (stats[clave]) return clave;
+
+        const ident = identidad(clave);
+
+        let candidatos = Object.keys(stats).filter(k =>
+            identidad(stats[k].n) === ident &&
+            (!equipo || equipo === "S/E" || stats[k].eq === equipo)
+        );
+        if (candidatos.length === 1) return candidatos[0];
+
+        candidatos = Object.keys(stats).filter(k => identidad(stats[k].n) === ident);
+        if (candidatos.length === 1) return candidatos[0];
+
+        const histKey = `hist|${limpiar(equipo)}|${ident || limpiar(clave)}`;
+        if (!stats[histKey]) {
+            stats[histKey] = {
+                id: histKey,
+                n: clave,
+                eq: equipo || "S/E",
+                g: 0, a: 0, p2: 0, p5: 0,
+                historico: true
+            };
+        }
+        return histKey;
+    }
+
+    function sumarMapa(mapa, equipo, campo, stats) {
+        if (!mapa || typeof mapa !== "object") return;
+        Object.entries(mapa).forEach(([jugador, cantidad]) => {
+            const cant = numero(cantidad);
+            if (!cant) return;
+            const id = resolver(jugador, equipo, stats);
+            if (id) stats[id][campo] += cant;
+        });
+    }
+
+    async function guardarPenalidadesManuales() {
+        const select = document.getElementById("manualPlayer");
+        if (!select || !select.value) {
+            alert("Seleccioná un jugador.");
+            return;
+        }
+
+        const id = select.value;
+        const p2Input = document.getElementById("manualP2");
+        const p5Input = document.getElementById("manualP5");
+
+        const p2 = Math.max(0, parseInt(p2Input?.value || "0") || 0);
+        const p5 = Math.max(0, parseInt(p5Input?.value || "0") || 0);
+
+        try {
+            await db.ref(`config/estadisticas_manual_penalidades/${id}`).set({ p2, p5 });
+        } catch (e) {
+            console.error(e);
+            alert("No se pudieron guardar las penalidades: " + e.message);
+        }
+    }
+
+    function actualizarResumenManual() {
+        const select = document.getElementById("manualPlayer");
+        const box = document.getElementById("manualCurrent");
+        if (!select || !box) return;
+
+        if (!select.value) {
+            box.innerHTML = "Seleccioná un jugador para ver o modificar sus penalidades.";
+            const p2Input = document.getElementById("manualP2");
+            const p5Input = document.getElementById("manualP5");
+            if (p2Input) p2Input.value = "";
+            if (p5Input) p5Input.value = "";
+            return;
+        }
+
+        const id = select.value;
+        const j = CACHE_JUGADORES[id] || {};
+        const nombre = j.info || j.jugadorName || j.nombre || id;
+        const equipo = j.equipo || "S/E";
+        const p = CACHE_PENALES[id] || {};
+
+        const p2Input = document.getElementById("manualP2");
+        const p5Input = document.getElementById("manualP5");
+        if (p2Input) p2Input.value = numero(p.p2);
+        if (p5Input) p5Input.value = numero(p.p5);
+
+        box.innerHTML = `<strong>${nombre}</strong> — ${equipo}`;
+    }
+
+    function renderTodo() {
+        const main = document.getElementById("main");
+        if (!main) return;
+
+        const stats = {};
+
+        Object.entries(CACHE_JUGADORES).forEach(([id, j]) => {
+            const nombre = j?.info || j?.jugadorName || j?.nombre;
+            if (!nombre || /G[1-3]/.test(nombre)) return;
+
+            stats[id] = {
+                id,
+                n: nombre,
+                eq: j.equipo || "S/E",
+                g: 0,
+                a: 0,
+                p2: numero(CACHE_PENALES?.[id]?.p2),
+                p5: numero(CACHE_PENALES?.[id]?.p5),
+                historico: false
+            };
         });
 
-        // 2. Procesamos los resultados de forma híbrida
-        Object.values(resultados).forEach(partido => {
-            if (!partido.individuales) return;
+        // SOLO goles y asistencias desde resultados.
+        Object.values(CACHE_RESULTADOS).forEach(partido => {
+            ["local", "visitante"].forEach(lado => {
+                const bloque = partido?.individuales?.[lado];
+                if (!bloque || typeof bloque !== "object") return;
 
-            // RECORRIDO COMPLETO DEL NODO INDIVIDUALES
-            Object.entries(partido.individuales).forEach(([key, data]) => {
-                
-                // CASO A: Es un equipo (local/visitante) -> Buscamos goles y asistencias
-                if (key === 'local' || key === 'visitante') {
-                    ['goles', 'asistencias'].forEach(tipo => {
-                        if (data[tipo]) {
-                            Object.entries(data[tipo]).forEach(([nombreJug, valor]) => {
-                                const idBusqueda = limpiarParaBusqueda(nombreJug);
-                                const idReal = Object.keys(stats).find(k => limpiarParaBusqueda(stats[k].n) === idBusqueda);
-                                if (idReal) {
-                                    if (tipo === 'goles') stats[idReal].g += parseInt(valor || 0);
-                                    if (tipo === 'asistencias') stats[idReal].a += parseInt(valor || 0);
-                                }
-                            });
-                        }
-                    });
-                    
-                    // TAMBIÉN: Revisamos si dentro de local/visitante hay penalidades por ID
-                    Object.entries(data).forEach(([posibleId, subData]) => {
-                        if (stats[posibleId]) {
-                            stats[posibleId].p2 += parseInt(subData.p2 || 0);
-                            stats[posibleId].p5 += parseInt(subData.p5 || 0);
-                        }
-                    });
-                } 
-                
-                // CASO B: Es un ID de jugador directo (como lo hace tu programa de carga)
-                else if (stats[key]) {
-                    stats[key].p2 += parseInt(data.p2 || 0);
-                    stats[key].p5 += parseInt(data.p5 || 0);
-                    // También sumamos goles si los hubiera cargado por ID
-                    stats[key].g += parseInt(data.goles || 0);
-                    stats[key].a += parseInt(data.asistencias || 0);
-                }
+                const equipo = partido?.equipos?.[lado]?.nombre || "S/E";
+
+                sumarMapa(bloque.goles, equipo, "g", stats);
+                sumarMapa(bloque.asistencias, equipo, "a", stats);
+
+                Object.entries(bloque).forEach(([jugador, data]) => {
+                    if (["goles","asistencias","faltas"].includes(jugador)) return;
+                    if (!data || typeof data !== "object") return;
+
+                    const id = resolver(jugador, equipo, stats);
+                    if (!id) return;
+
+                    if (!bloque.goles) stats[id].g += numero(data.goles ?? data.g);
+                    if (!bloque.asistencias) stats[id].a += numero(data.asistencias ?? data.a);
+                });
             });
         });
 
+        // Conservar una penalidad manual aunque el jugador ya no esté en config/jugadores.
+        Object.entries(CACHE_PENALES).forEach(([id, p]) => {
+            if (stats[id]) return;
+            stats[id] = {
+                id,
+                n: id,
+                eq: "S/E",
+                g: 0, a: 0,
+                p2: numero(p?.p2),
+                p5: numero(p?.p5),
+                historico: true
+            };
+        });
+
+        const opciones = Object.entries(CACHE_JUGADORES)
+            .map(([id, j]) => ({
+                id,
+                nombre: j?.info || j?.jugadorName || j?.nombre || id,
+                equipo: j?.equipo || "S/E"
+            }))
+            .filter(j => j.nombre && !/G[1-3]/.test(j.nombre))
+            .sort((a,b) => a.equipo.localeCompare(b.equipo) || a.nombre.localeCompare(b.nombre));
+
+        const panelManual = `
+            <div class="manual-penales">
+                <div class="mp-head">Carga manual de penalidades</div>
+                <div class="mp-body">
+                    <select id="manualPlayer" onchange="actualizarResumenManual()">
+                        <option value="">Seleccionar jugador...</option>
+                        ${opciones.map(j => `<option value="${j.id}">${j.equipo} — ${j.nombre} [ID ${j.id}]</option>`).join("")}
+                    </select>
+
+                    <div class="manual-actions">
+                        <div class="manual-field">
+                            <label for="manualP2">Cantidad P2</label>
+                            <input id="manualP2" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
+                        </div>
+                        <div class="manual-field">
+                            <label for="manualP5">Cantidad P5</label>
+                            <input id="manualP5" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
+                        </div>
+                    </div>
+
+                    <button class="btn-save-pen" onclick="guardarPenalidadesManuales()">GUARDAR PENALIDADES</button>
+
+                    <div id="manualCurrent" class="manual-current">
+                        Seleccioná un jugador para cargar sus penalidades.
+                    </div>
+
+                    <div class="manual-note">
+                        Escribí directamente la cantidad total de P2 y P5 del jugador.
+                        Al guardar, el ranking se ordena automáticamente de mayor a menor.
+                    </div>
+                </div>
+            </div>`;
+
         const renderRanking = (titulo, lista, tipo, idCard) => {
             if (lista.length === 0) return "";
-            let h = `<div class="card"><div class="card-t">${titulo}</div>`;
-            
-            lista.forEach((j, i) => {
-                const idB = limpiarParaBusqueda(j.n);
-                const reg = inscripciones.find(ins => {
-                    const idIns = limpiarParaBusqueda(ins.jugadorName || "");
-                    return idIns !== "" && (idIns === idB || idIns.includes(idB) || idB.includes(idIns));
-                }) || {};
 
-                const esExtra = i >= 5; 
+            let h = `<div class="card"><div class="card-t">${titulo}</div>`;
+
+            lista.forEach((j, i) => {
+                const ident = identidad(j.n);
+                const reg = CACHE_INSCRIPCIONES.find(ins =>
+                    identidad(ins?.jugadorName || ins?.capitanName || "") === ident
+                ) || {};
+
+                const esExtra = i >= 5;
                 let val = 0, claseV = "";
-                
-                if (tipo === 'mvp') { val = j.g + j.a; claseV = "mvp-v"; }
-                else if (tipo === 'gol') { val = j.g; }
-                else if (tipo === 'p2') { val = j.p2; claseV = "pen2-v"; }
-                else if (tipo === 'p5') { val = j.p5; claseV = "pen5-v"; }
+
+                if (tipo === "mvp") { val = j.g + j.a; claseV = "mvp-v"; }
+                else if (tipo === "gol") val = j.g;
+                else if (tipo === "p2") { val = j.p2; claseV = "pen2-v"; }
+                else if (tipo === "p5") { val = j.p5; claseV = "pen5-v"; }
 
                 h += `
                 <div class="row ${esExtra ? 'extra' : ''}" data-card="${idCard}">
                     <div class="rank">${i + 1}</div>
                     <div class="img-box">
                         <img src="${reg.fotoCarnet || 'https://i.ibb.co/LzN868X/default-avatar.png'}" class="p-img">
-                        ${logos[j.eq] ? `<img src="${logos[j.eq]}" class="team-logo">` : ""}
+                        ${CACHE_LOGOS[j.eq] ? `<img src="${CACHE_LOGOS[j.eq]}" class="team-logo">` : ""}
                     </div>
                     <div class="info">
                         <span class="n">${j.n}</span>
@@ -170,21 +359,543 @@
             });
 
             if (lista.length > 5) {
-                h += `<button class="btn-toggle" data-expandido="false" onclick="toggleLista(this, '${idCard}', ${lista.length})">Ver todos (${lista.length}) ▾</button>`;
+                h += `<button class="btn-toggle" data-expandido="false" onclick="toggleLista(this,'${idCard}',${lista.length})">Ver todos los jugadores (${lista.length}) ▾</button>`;
             }
+
             return h + `</div>`;
         };
 
         const arr = Object.values(stats);
-        const rMVP = [...arr].sort((a,b) => (b.g+b.a) - (a.g+a.a) || a.n.localeCompare(b.n));
-        const rGol = [...arr].sort((a,b) => b.g - a.g || a.n.localeCompare(b.n));
-        const rP2 = [...arr].sort((a,b) => b.p2 - a.p2 || a.n.localeCompare(b.n));
-        const rP5 = [...arr].sort((a,b) => b.p5 - a.p5 || a.n.localeCompare(b.n));
 
-        main.innerHTML = renderRanking("Puntos (Goles + Asis)", rMVP, "mvp", "mvp") +
-                         renderRanking("Goleadores", rGol, "gol", "goles") +
-                         renderRanking("Penales 2 Minutos", rP2, "p2", "p2") +
-                         renderRanking("Penales 5 Minutos", rP5, "p5", "p5");
+        const rMVP = [...arr].sort((a,b) => (b.g+b.a) - (a.g+a.a) || b.g - a.g || a.n.localeCompare(b.n));
+        const rGol = [...arr].sort((a,b) => b.g - a.g || a.n.localeCompare(b.n));
+
+        // Automáticamente de mayor a menor.
+        const rP2 = [...arr].filter(j => j.p2 > 0)
+            .sort((a,b) => b.p2 - a.p2 || b.p5 - a.p5 || a.n.localeCompare(b.n));
+
+        const rP5 = [...arr].filter(j => j.p5 > 0)
+            .sort((a,b) => b.p5 - a.p5 || b.p2 - a.p2 || a.n.localeCompare(b.n));
+
+        main.innerHTML =
+            panelManual +
+            renderRanking("Puntos (Goles + Asis)", rMVP, "mvp", "mvp") +
+            renderRanking("Goleadores", rGol, "gol", "goles") +
+            renderRanking("Penales 2 Minutos", rP2, "p2", "p2") +
+            renderRanking("Penales 5 Minutos", rP5, "p5", "p5");
+    }
+
+    db.ref("config/resultados").on("value", snap => {
+        CACHE_RESULTADOS = snap.val() || {};
+        renderTodo();
+    });
+
+    db.ref("config/jugadores").on("value", snap => {
+        CACHE_JUGADORES = snap.val() || {};
+        renderTodo();
+    });
+
+    db.ref("config/logos").on("value", snap => {
+        CACHE_LOGOS = snap.val() || {};
+        renderTodo();
+    });
+
+    db.ref("inscripciones").on("value", snap => {
+        CACHE_INSCRIPCIONES = Object.values(snap.val() || {});
+        renderTodo();
+    });
+
+    db.ref("config/estadisticas_manual_penalidades").on("value", snap => {
+        CACHE_PENALES = snap.val() || {};
+        renderTodo();
+    });
+
+</script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --rojo: #c61a2e; --negro: #1a1a1a; --gris: #f4f4f4; --oro: #d4af37; --azul-p: #0056b3; --naranja-p: #e65100; }
+        body { font-family: 'Roboto', sans-serif; background: var(--gris); margin: 0; padding-bottom: 50px; }
+        .container { max-width: 500px; margin: auto; padding: 16px 10px 10px; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 25px; overflow: hidden; border: 1px solid #eee; }
+        .card-t { background: #fafafa; padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #eee; color: var(--rojo); text-transform: uppercase; font-size: 0.85rem; }
+        .row { display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f9f9f9; }
+        .row.extra { display: none; }
+        .row.show { display: flex; }
+        .rank { width: 25px; font-weight: bold; color: #bbb; font-size: 0.8rem; }
+        .img-box { position: relative; width: 50px; height: 50px; margin-right: 15px; }
+        .p-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #eee; background: #fff; }
+        .team-logo { position: absolute; bottom: -2px; right: -2px; width: 20px; height: 20px; border-radius: 50%; background: white; border: 1px solid #ddd; padding: 1px; }
+        .info { flex: 1; min-width: 0; }
+        .n { display: block; font-weight: bold; font-size: 0.9rem; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .e { display: block; font-size: 0.7rem; color: #888; text-transform: uppercase; margin-top: 2px; }
+        .v { font-weight: 900; font-size: 1.2rem; color: var(--negro); margin-left: 10px; background: #f0f0f0; padding: 5px 12px; border-radius: 8px; min-width: 35px; text-align: center; }
+        .v.mvp-v { background: var(--negro); color: var(--oro); border: 1px solid var(--oro); }
+        .v.pen2-v { background: #e3f2fd; color: var(--azul-p); border: 1px solid #bbdefb; }
+        .v.pen5-v { background: #fff3e0; color: var(--naranja-p); border: 1px solid #ffe0b2; }
+        .btn-toggle { width: 100%; padding: 12px; background: #fff; border: none; color: #666; font-size: 0.75rem; font-weight: bold; cursor: pointer; border-top: 1px solid #eee; text-transform: uppercase; }
+        .diag { background:#fff; border:1px solid #ddd; border-radius:12px; margin-bottom:18px; overflow:hidden; }
+        .diag-h { padding:11px 14px; font-weight:900; font-size:.75rem; text-transform:uppercase; display:flex; justify-content:space-between; gap:8px; }
+        .diag-b { padding:10px 14px; border-top:1px solid #eee; font-size:.7rem; line-height:1.55; color:#555; }
+        .diag-ok { color:#2e7d32; font-weight:900; }
+        .diag-warn { color:#c61a2e; font-weight:900; }
+        .diag details { border-top:1px solid #eee; }
+        .diag summary { cursor:pointer; padding:10px 14px; font-size:.7rem; font-weight:900; }
+        .diag-pre { padding:0 14px 12px; font-size:.64rem; white-space:pre-wrap; word-break:break-word; color:#555; }
+
+        
+
+        .manual-penales { background:#fff; border:1px solid #ddd; border-radius:12px; margin-bottom:18px; overflow:hidden; }
+        .manual-penales .mp-head { padding:12px 15px; background:#fafafa; border-bottom:1px solid #eee; font-weight:900; color:var(--rojo); text-transform:uppercase; font-size:.82rem; }
+        .manual-penales .mp-body { padding:14px; }
+        .manual-penales select { width:100%; padding:11px 12px; border:1px solid #ccc; border-radius:8px; background:#fff; font-weight:700; margin-bottom:10px; }
+        .manual-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+        .manual-actions button { border:none; border-radius:8px; padding:11px 10px; font-weight:900; cursor:pointer; }
+        .btn-p2-add { background:#e3f2fd; color:#0056b3; border:1px solid #bbdefb !important; }
+        .btn-p5-add { background:#fff3e0; color:#e65100; border:1px solid #ffe0b2 !important; }
+        .btn-sub { background:#f5f5f5; color:#555; border:1px solid #ddd !important; }
+        .manual-current { margin-top:10px; font-size:.72rem; color:#666; line-height:1.5; }
+        .manual-current strong { color:#222; }
+        .manual-note { margin-top:8px; font-size:.66rem; color:#888; }
+
+        /* Nav Global */
+        .nav-uerh-global { background: #000; display: flex; overflow-x: auto; position: sticky; top: 0; z-index: 10000; border-bottom: 3px solid #c61a2e; padding: 0; scrollbar-width: none; }
+        .nav-uerh-global::-webkit-scrollbar { display: none; }
+        .nav-uerh-global a { color: #888; text-decoration: none; padding: 15px 18px; font-weight: 900; font-size: 0.7rem; text-transform: uppercase; white-space: nowrap; transition: 0.3s; border-right: 1px solid #1a1a1a; display: flex; align-items: center; }
+        .nav-uerh-global a.active { color: #fff; background: #c61a2e; }
+        .btn-nav-home { background: #1a1a1a; color: #c61a2e !important; border-right: 2px solid #c61a2e !important; }
+    </style>
+</head>
+<body>
+
+<nav class="nav-uerh-global">
+    <a href="UERH.html" class="btn-nav-home">INICIO</a>
+    <a href="Calendario-Posiciones.html">Calendario</a>
+    <a href="Equipos.html">Equipos</a>
+    <a href="Estadisticasnuevo.html" class="active">Estadísticas</a>
+    <a href="Porteros.html">Ranking Goleros</a>
+</nav>
+
+<div id="main" class="container"></div>
+
+<script>
+    const firebaseConfig = { databaseURL: "https://uerh-t2026-default-rtdb.firebaseio.com" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function limpiarParaBusqueda(t) {
+        if (!t) return "";
+        return String(t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\(.*\)/g, "").replace(/[^a-z0-9]/g, "").trim();
+    }
+
+    function toggleLista(btn, idCard, total) {
+        const filasExtras = document.querySelectorAll(`[data-card="${idCard}"].extra`);
+        const estaExpandido = btn.getAttribute('data-expandido') === 'true';
+        if (estaExpandido) {
+            filasExtras.forEach(f => f.classList.remove('show'));
+            btn.innerHTML = `Ver todos los jugadores (${total}) ▾`;
+            btn.setAttribute('data-expandido', 'false');
+        } else {
+            filasExtras.forEach(f => f.classList.add('show'));
+            btn.innerHTML = `Ver menos ▴`;
+            btn.setAttribute('data-expandido', 'true');
+        }
+    }
+
+    db.ref('config/resultados').on('value', snapResultados => {
+        const resultados = snapResultados.val() || {};
+
+        Promise.all([
+            db.ref('config/jugadores').once('value'),
+            db.ref('config/logos').once('value'),
+            db.ref('inscripciones').once('value')
+        ]).then(([snapJugadores, snapLogos, snapInscripciones]) => {
+            const jugadoresConfig = snapJugadores.val() || {};
+            const logos = snapLogos.val() || {};
+            const inscripcionesObj = snapInscripciones.val() || {};
+            const inscripciones = Object.values(inscripcionesObj);
+            const main = document.getElementById('main');
+
+            const stats = {};
+
+            function limpiar(t) {
+                return String(t || "")
+                    .toLowerCase()
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .replace(/[.#$/\[\]_]/g, " ")
+                    .replace(/\(.*?\)/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+            }
+
+            function identidad(t) {
+                let s = limpiar(t);
+                s = s.replace(/^#?\s*\d+\s*[-–—:]?\s*/, "").trim();
+                return s.replace(/[^a-z0-9]/g, "");
+            }
+
+            // Cargar TODA la plantilla actual desde el inicio.
+            Object.entries(jugadoresConfig).forEach(([id, j]) => {
+                const nombre = j?.info || j?.jugadorName || j?.nombre;
+                if (!nombre || /G[1-3]/.test(nombre)) return;
+                stats[id] = {
+                    n: nombre,
+                    eq: j.equipo || "S/E",
+                    g: 0, a: 0, p2: 0, p5: 0,
+                    historico: false
+                };
+            });
+
+            function resolver(ref, equipo = "S/E") {
+                const clave = String(ref || "");
+                if (!clave) return null;
+
+                if (stats[clave]) return clave;
+
+                const ident = identidad(clave);
+                const candidatos = Object.keys(stats).filter(k =>
+                    identidad(stats[k].n) === ident &&
+                    (!equipo || equipo === "S/E" || stats[k].eq === equipo)
+                );
+
+                if (candidatos.length === 1) return candidatos[0];
+
+                const candidatosSinEquipo = Object.keys(stats).filter(k =>
+                    identidad(stats[k].n) === ident
+                );
+                if (candidatosSinEquipo.length === 1) return candidatosSinEquipo[0];
+
+                // Nunca perder un dato histórico aunque ya no exista en config/jugadores.
+                const histKey = `hist|${limpiar(equipo)}|${ident || limpiar(clave)}`;
+                if (!stats[histKey]) {
+                    stats[histKey] = {
+                        n: clave,
+                        eq: equipo || "S/E",
+                        g: 0, a: 0, p2: 0, p5: 0,
+                        historico: true
+                    };
+                }
+                return histKey;
+            }
+
+            function n(v) {
+                if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+                if (typeof v === "string") return parseInt(v) || 0;
+                return 0;
+            }
+
+            function sumarCampo(ref, equipo, campo, cantidad) {
+                const id = resolver(ref, equipo);
+                const cant = n(cantidad);
+                if (!id || !cant) return;
+                stats[id][campo] += cant;
+            }
+
+            // -------------------------------------------------------------
+            // ESCÁNER ROBUSTO DE PENALIZACIONES:
+            // busca p2/p5 en CUALQUIER profundidad dentro de cada resultado.
+            // Esto permite leer tanto el formato actual como históricos.
+            // -------------------------------------------------------------
+            function escanearP2P5(obj, equipoFallback, path = [], encontrados = []) {
+                if (!obj || typeof obj !== "object") return encontrados;
+
+                const tieneP2 = Object.prototype.hasOwnProperty.call(obj, "p2");
+                const tieneP5 = Object.prototype.hasOwnProperty.call(obj, "p5");
+
+                if (tieneP2 || tieneP5) {
+                    const p2 = n(obj.p2);
+                    const p5 = n(obj.p5);
+
+                    if (p2 || p5) {
+                        // El dueño del objeto suele ser el jugador.
+                        // Si el segmento actual es genérico, usar el anterior.
+                        const generic = new Set(["faltas","penales","penalizaciones","sanciones","individuales","local","visitante"]);
+                        let idx = path.length - 1;
+                        let jugador = path[idx] || "Jugador";
+
+                        if (generic.has(String(jugador).toLowerCase()) && idx > 0) {
+                            jugador = path[idx - 1];
+                        }
+
+                        encontrados.push({
+                            jugador,
+                            equipo: equipoFallback,
+                            p2,
+                            p5,
+                            path: path.join("/")
+                        });
+                    }
+                }
+
+                Object.entries(obj).forEach(([k, v]) => {
+                    if (v && typeof v === "object") {
+                        escanearP2P5(v, equipoFallback, [...path, k], encontrados);
+                    }
+                });
+
+                return encontrados;
+            }
+
+            // Fallback para históricos que solo tengan objetos de penal activo.
+            function escanearDuraciones(obj, equipoFallback, path = [], encontrados = []) {
+                if (!obj || typeof obj !== "object") return encontrados;
+
+                if (!Array.isArray(obj)) {
+                    const dur = n(obj.duracion ?? obj.duration ?? obj.tipo);
+                    const jugador = obj.j ?? obj.jugador ?? obj.player ?? obj.nombre;
+
+                    if ((dur === 120 || dur === 300) && jugador) {
+                        encontrados.push({
+                            jugador: String(jugador),
+                            equipo: equipoFallback,
+                            p2: dur === 120 ? 1 : 0,
+                            p5: dur === 300 ? 1 : 0,
+                            path: path.join("/")
+                        });
+                    }
+                }
+
+                Object.entries(obj).forEach(([k, v]) => {
+                    if (v && typeof v === "object") {
+                        escanearDuraciones(v, equipoFallback, [...path, k], encontrados);
+                    }
+                });
+
+                return encontrados;
+            }
+
+            // Fallback final: texto histórico "2M(...): Jugador" o "5M(...): Jugador".
+            function escanearEventos(obj, equipoFallback, encontrados = []) {
+                if (!obj || typeof obj !== "object") return encontrados;
+
+                Object.values(obj).forEach(v => {
+                    if (v && typeof v === "object") {
+                        const txt = String(v.txt || v.texto || "");
+                        const m = txt.match(/\b(2M|5M)\s*(?:\([^)]*\))?\s*:\s*(.+)$/i);
+                        if (m) {
+                            encontrados.push({
+                                jugador: m[2].trim(),
+                                equipo: equipoFallback,
+                                p2: m[1].toUpperCase() === "2M" ? 1 : 0,
+                                p5: m[1].toUpperCase() === "5M" ? 1 : 0,
+                                path: "evento:" + txt
+                            });
+                        }
+                        escanearEventos(v, equipoFallback, encontrados);
+                    }
+                });
+
+                return encontrados;
+            }
+
+            function contarMapaSimple(mapa, equipo, campo) {
+                let total = 0;
+                if (!mapa || typeof mapa !== "object") return total;
+
+                Object.entries(mapa).forEach(([jugador, cantidad]) => {
+                    const cant = n(cantidad);
+                    if (!cant) return;
+                    sumarCampo(jugador, equipo, campo, cant);
+                    total += cant;
+                });
+                return total;
+            }
+
+            let totalP2 = 0;
+            let totalP5 = 0;
+            let totalGolesMarcador = 0;
+            let totalGolesIndividuales = 0;
+            const rutasFaltas = [];
+            const diferenciasGoles = [];
+
+            Object.entries(resultados).forEach(([idPartido, partido]) => {
+                if (!partido || typeof partido !== "object") return;
+
+                let golesIndPartido = 0;
+
+                ["local", "visitante"].forEach(lado => {
+                    const equipo = partido?.equipos?.[lado]?.nombre || "S/E";
+                    const bloque = partido?.individuales?.[lado];
+
+                    if (bloque && typeof bloque === "object") {
+                        // GOLES y ASISTENCIAS: primero el formato oficial actual.
+                        golesIndPartido += contarMapaSimple(bloque.goles, equipo, "g");
+                        contarMapaSimple(bloque.asistencias, equipo, "a");
+
+                        // Si faltan mapas modernos, compatibilidad con esquema antiguo.
+                        Object.entries(bloque).forEach(([jugador, data]) => {
+                            if (["goles","asistencias","faltas"].includes(jugador)) return;
+                            if (!data || typeof data !== "object") return;
+
+                            if (!bloque.goles) {
+                                const cantG = n(data.goles ?? data.g);
+                                if (cantG) {
+                                    sumarCampo(jugador, equipo, "g", cantG);
+                                    golesIndPartido += cantG;
+                                }
+                            }
+
+                            if (!bloque.asistencias) {
+                                const cantA = n(data.asistencias ?? data.a);
+                                if (cantA) sumarCampo(jugador, equipo, "a", cantA);
+                            }
+                        });
+                    }
+
+                    // Penalizaciones: se escanea TODO el lado del partido.
+                    const raizLado = partido?.individuales?.[lado] || {};
+
+                    let halladas = escanearP2P5(raizLado, equipo, [lado], []);
+
+                    // Si no hay p2/p5 estructurados, buscar objetos de duración.
+                    if (!halladas.length) {
+                        halladas = escanearDuraciones(raizLado, equipo, [lado], []);
+                    }
+
+                    // Si tampoco existen, intentar eventos históricos.
+                    if (!halladas.length) {
+                        halladas = escanearEventos(partido?.["events" + (lado === "local" ? "L" : "V")] || {}, equipo, []);
+                    }
+
+                    // Evitar duplicados exactos si una estructura fue recorrida varias veces.
+                    const vistos = new Set();
+                    halladas.forEach(f => {
+                        const firma = `${f.path}|${f.jugador}|${f.p2}|${f.p5}`;
+                        if (vistos.has(firma)) return;
+                        vistos.add(firma);
+
+                        const id = resolver(f.jugador, equipo);
+                        if (!id) return;
+
+                        stats[id].p2 += f.p2;
+                        stats[id].p5 += f.p5;
+                        totalP2 += f.p2;
+                        totalP5 += f.p5;
+
+                        rutasFaltas.push({
+                            partido: idPartido,
+                            lado,
+                            equipo,
+                            jugador: stats[id].n,
+                            p2: f.p2,
+                            p5: f.p5,
+                            ruta: f.path
+                        });
+                    });
+                });
+
+                const golesMarcador =
+                    n(partido?.equipos?.local?.goles) +
+                    n(partido?.equipos?.visitante?.goles);
+
+                totalGolesMarcador += golesMarcador;
+                totalGolesIndividuales += golesIndPartido;
+
+                if (golesMarcador !== golesIndPartido) {
+                    diferenciasGoles.push({
+                        partido: idPartido,
+                        marcador: golesMarcador,
+                        individuales: golesIndPartido
+                    });
+                }
+            });
+
+            const renderRanking = (titulo, lista, tipo, idCard) => {
+                if (lista.length === 0) return "";
+
+                let h = `<div class="card"><div class="card-t">${titulo}</div>`;
+
+                lista.forEach((j, i) => {
+                    const ident = identidad(j.n);
+                    const reg = inscripciones.find(ins =>
+                        identidad(ins?.jugadorName || ins?.capitanName || "") === ident
+                    ) || {};
+
+                    const esExtra = i >= 5;
+                    let val = 0, claseV = "";
+
+                    if (tipo === 'mvp') { val = j.g + j.a; claseV = "mvp-v"; }
+                    else if (tipo === 'gol') val = j.g;
+                    else if (tipo === 'p2') { val = j.p2; claseV = "pen2-v"; }
+                    else if (tipo === 'p5') { val = j.p5; claseV = "pen5-v"; }
+
+                    h += `
+                    <div class="row ${esExtra ? 'extra' : ''}" data-card="${idCard}">
+                        <div class="rank">${i + 1}</div>
+                        <div class="img-box">
+                            <img src="${reg.fotoCarnet || 'https://i.ibb.co/LzN868X/default-avatar.png'}" class="p-img">
+                            ${logos[j.eq] ? `<img src="${logos[j.eq]}" class="team-logo">` : ""}
+                        </div>
+                        <div class="info">
+                            <span class="n">${j.n}</span>
+                            <span class="e">${j.eq}</span>
+                        </div>
+                        <div class="v ${claseV}">${val}</div>
+                    </div>`;
+                });
+
+                if (lista.length > 5) {
+                    h += `<button class="btn-toggle" data-expandido="false" onclick="toggleLista(this, '${idCard}', ${lista.length})">Ver todos (${lista.length}) ▾</button>`;
+                }
+
+                return h + `</div>`;
+            };
+
+            const arr = Object.values(stats);
+
+            const rMVP = [...arr].sort((a,b) => (b.g+b.a) - (a.g+a.a) || b.g-a.g || a.n.localeCompare(b.n));
+            const rGol = [...arr].sort((a,b) => b.g - a.g || a.n.localeCompare(b.n));
+            const rP2 = [...arr].sort((a,b) => b.p2 - a.p2 || a.n.localeCompare(b.n));
+            const rP5 = [...arr].sort((a,b) => b.p5 - a.p5 || a.n.localeCompare(b.n));
+
+            const resumen = `
+                <div class="diag">
+                    <div class="diag-h">
+                        <span>CONTROL DE LECTURA</span>
+                        <span class="${(totalP2 || totalP5) ? 'diag-ok' : 'diag-warn'}">
+                            ${(totalP2 || totalP5) ? 'FALTAS ENCONTRADAS' : 'SIN FALTAS DETECTADAS'}
+                        </span>
+                    </div>
+                    <div class="diag-b">
+                        <strong>Fuente:</strong> config/resultados<br>
+                        <strong>2 min encontrados:</strong> ${totalP2} &nbsp; · &nbsp;
+                        <strong>5 min encontrados:</strong> ${totalP5}<br>
+                        <strong>Goles de marcadores:</strong> ${totalGolesMarcador} &nbsp; · &nbsp;
+                        <strong>Goles individuales:</strong> ${totalGolesIndividuales}
+                    </div>
+                    <details>
+                        <summary>Ver exactamente dónde encontró las faltas (${rutasFaltas.length})</summary>
+                        <div class="diag-pre">${rutasFaltas.length
+                            ? rutasFaltas.map(x =>
+                                `${x.partido} | ${x.equipo} | ${x.jugador} | 2m:${x.p2} 5m:${x.p5} | ${x.ruta}`
+                              ).join("\n")
+                            : "No se encontró ningún p2/p5, duración 120/300 ni evento 2M/5M dentro de config/resultados."}
+                        </div>
+                    </details>
+                    ${diferenciasGoles.length ? `
+                    <details>
+                        <summary>Partidos con diferencia entre marcador y goleadores (${diferenciasGoles.length})</summary>
+                        <div class="diag-pre">${diferenciasGoles.map(x =>
+                            `${x.partido}: marcador=${x.marcador}, goles individuales=${x.individuales}`
+                        ).join("\n")}</div>
+                    </details>` : ""}
+                </div>`;
+
+            main.innerHTML =
+                resumen +
+                renderRanking("Puntos (Goles + Asis)", rMVP, "mvp", "mvp") +
+                renderRanking("Goleadores", rGol, "gol", "goles") +
+                renderRanking("Penales 2 Minutos", rP2, "p2", "p2") +
+                renderRanking("Penales 5 Minutos", rP5, "p5", "p5");
+
+            console.log("[UERH] Penalizaciones detectadas:", rutasFaltas);
+            console.log("[UERH] Diferencias de goles:", diferenciasGoles);
+        }).catch(err => {
+            console.error(err);
+            document.getElementById('main').innerHTML =
+                `<div class="diag"><div class="diag-h diag-warn">ERROR LEYENDO FIREBASE</div><div class="diag-b">${err.message}</div></div>`;
+        });
     });
 </script>
 </body>
