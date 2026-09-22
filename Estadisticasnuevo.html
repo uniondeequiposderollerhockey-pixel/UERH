@@ -52,6 +52,13 @@
         .manual-current strong { color:#222; }
         .manual-note { margin-top:8px; font-size:.66rem; color:#888; }
 
+
+        .admin-hidden-wrap { text-align:center; padding:8px 0 18px; }
+        .admin-plus { border:none; background:transparent; color:#c7c7c7; font-size:1rem; cursor:pointer; padding:4px 8px; line-height:1; opacity:.55; }
+        .admin-plus:hover { opacity:.9; color:#999; }
+        .manual-penales.admin-hidden { display:none; }
+        .manual-penales.admin-visible { display:block; }
+
         /* Nav Global */
         .nav-uerh-global { background: #000; display: flex; overflow-x: auto; position: sticky; top: 0; z-index: 10000; border-bottom: 3px solid #c61a2e; padding: 0; scrollbar-width: none; }
         .nav-uerh-global::-webkit-scrollbar { display: none; }
@@ -292,7 +299,7 @@
             .sort((a,b) => a.equipo.localeCompare(b.equipo) || a.nombre.localeCompare(b.nombre));
 
         const panelManual = `
-            <div class="manual-penales">
+            <div id="manualPenaltyPanel" class="manual-penales admin-hidden">
                 <div class="mp-head">Carga manual de penalidades</div>
                 <div class="mp-body">
                     <select id="manualPlayer" onchange="actualizarResumenManual()">
@@ -378,11 +385,38 @@
             .sort((a,b) => b.p5 - a.p5 || b.p2 - a.p2 || a.n.localeCompare(b.n));
 
         main.innerHTML =
-            panelManual +
             renderRanking("Puntos (Goles + Asis)", rMVP, "mvp", "mvp") +
             renderRanking("Goleadores", rGol, "gol", "goles") +
             renderRanking("Penales 2 Minutos", rP2, "p2", "p2") +
-            renderRanking("Penales 5 Minutos", rP5, "p5", "p5");
+            renderRanking("Penales 5 Minutos", rP5, "p5", "p5") +
+            panelManual +
+            `<div class="admin-hidden-wrap">
+                <button class="admin-plus" type="button" onclick="abrirCargaPenalidades()" aria-label="Administración">+</button>
+            </div>`;
+    }
+
+
+    function abrirCargaPenalidades() {
+        const panel = document.getElementById("manualPenaltyPanel");
+        if (!panel) return;
+
+        if (panel.classList.contains("admin-visible")) {
+            panel.classList.remove("admin-visible");
+            panel.classList.add("admin-hidden");
+            return;
+        }
+
+        const clave = prompt("Clave de acceso:");
+        if (clave === null) return;
+
+        if (clave !== "UERH2026") {
+            alert("Clave incorrecta.");
+            return;
+        }
+
+        panel.classList.remove("admin-hidden");
+        panel.classList.add("admin-visible");
+        panel.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     db.ref("config/resultados").on("value", snap => {
